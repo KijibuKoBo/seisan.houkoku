@@ -44,17 +44,37 @@ async function extractRawItems(buffer: ArrayBuffer): Promise<RawTextItem[]> {
   return result;
 }
 
-// X-column thresholds for the standard 木地部 PDF layout
-const COL = {
-  CODE_MAX: 75,        // 品番
-  CAT_MIN: 75, CAT_MAX: 110,   // カテゴリー
-  NAME_MIN: 110, NAME_MAX: 280, // 品名
-  COUNT_MIN: 280, COUNT_MAX: 380, // 本数
-  PRICE_MIN: 380, PRICE_MAX: 460, // 単価
-  AMT_MIN: 460,        // 金額
+// New format (with ロット番号 column): codes at x<75
+const COL_NEW = {
+  CODE_MAX: 75,
+  CAT_MIN: 75, CAT_MAX: 110,
+  NAME_MIN: 110, NAME_MAX: 280,
+  COUNT_MIN: 280, COUNT_MAX: 380,
+  PRICE_MIN: 380, PRICE_MAX: 460,
+  AMT_MIN: 460,
 } as const;
 
+// Old format (no ロット番号): prefix/cat at x75-100, name at x100+, count at x275+
+const COL_OLD = {
+  CODE_MAX: 75,
+  CAT_MIN: 75, CAT_MAX: 100,
+  NAME_MIN: 100, NAME_MAX: 275,
+  COUNT_MIN: 275, COUNT_MAX: 380,
+  PRICE_MIN: 380, PRICE_MAX: 460,
+  AMT_MIN: 460,
+} as const;
+
+// New format has product codes at x<75; old format starts at x76+
+function detectFormat(items: RawTextItem[]): 'new' | 'old' {
+  const ys = items.map(i => i.y);
+  const yMax = Math.max(...ys), yMin = Math.min(...ys);
+  const data = items.filter(i => i.y < yMax - 20 && i.y > yMin + 20);
+  return data.some(i => i.x < 75) ? 'new' : 'old';
+}
+
 function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: number): PdfParseResult {
+  const COL = detectFormat(rawItems) === 'new' ? COL_NEW : COL_OLD;
+
   // Group by Y coordinate with 10px tolerance
   const rowMap = new Map<number, RawTextItem[]>();
   for (const item of rawItems) {
