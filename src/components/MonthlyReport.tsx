@@ -8,189 +8,368 @@ interface Props {
   onClose: () => void;
 }
 
-const SALES_LABELS: { key: keyof SalesData; label: string }[] = [
-  { key: 'otsuka',    label: '大塚' },
-  { key: 'takumi',   label: '匠' },
-  { key: 'butsudan', label: '仏壇' },
-  { key: 'ippanten', label: '一般店' },
-  { key: 'showroom', label: 'ショールーム' },
-  { key: 'bukken',   label: 'その他' },
+const CHANNELS: { key: keyof SalesData; label: string; color: string; abbr: string }[] = [
+  { key: 'otsuka',    label: '大塚',        color: '#4472C4', abbr: '大' },
+  { key: 'takumi',   label: '匠',          color: '#5BA554', abbr: '匠' },
+  { key: 'butsudan', label: '仏壇',        color: '#7B2D8B', abbr: '仏' },
+  { key: 'ippanten', label: '一般店',      color: '#E67E22', abbr: '店' },
+  { key: 'showroom', label: 'ショールーム', color: '#E74C3C', abbr: 'SR' },
+  { key: 'bukken',   label: 'その他',      color: '#95A5A6', abbr: '他' },
 ];
 
-function salesTotal(d: MonthData | null | undefined): number {
+const SECTIONS = [
+  { key: 'kiji',   title: '木地製造部', icon: '🪵', color: '#2e7d32' },
+  { key: 'tosou',  title: '塗装部',     icon: '🎨', color: '#1565c0' },
+  { key: 'matome', title: 'まとめ部',   icon: '📦', color: '#6a1b9a' },
+] as const;
+
+function stTotal(d: MonthData | null | undefined): number {
   if (!d) return 0;
-  return Object.values(d.sales).reduce((s, v) => s + (v as number), 0);
+  return d.sales.otsuka + d.sales.takumi + d.sales.butsudan +
+         d.sales.ippanten + d.sales.showroom + d.sales.bukken;
 }
 
-function pct(cur: number, base: number): string {
-  if (!base || !cur) return '—';
-  return `${Math.round((cur / base) * 100)}%`;
+function calcPct(cur: number, base: number): number | null {
+  return base > 0 ? Math.round((cur / base) * 100) : null;
 }
 
-function upDown(cur: number, base: number): string {
-  if (!base || !cur) return '';
-  return cur >= base ? 'up' : 'down';
+function pctStr(cur: number, base: number): string {
+  const p = calcPct(cur, base);
+  return p !== null ? `${p}%` : '—';
 }
 
 function yen(n: number): string {
   return n === 0 ? '—' : `¥${n.toLocaleString('ja-JP')}`;
 }
 
-function hon(n: number): string {
-  return n === 0 ? '—' : `${n.toLocaleString()}本`;
+function PctCell({ cur, base, className }: { cur: number; base: number; className?: string }) {
+  const p = calcPct(cur, base);
+  const dir = p === null ? 'na' : p >= 100 ? 'up' : 'down';
+  return <span className={`pct-val ${dir} ${className ?? ''}`}>{p !== null ? `${p}%` : '—'}</span>;
 }
 
-interface RowProps {
-  label: string;
-  py: number;
-  cur: number;
-  pm: number;
-  fmt: (n: number) => string;
-  indent?: boolean;
-  bold?: boolean;
-  note?: string;
-}
+// ─── Section bar chart ────────────────────────────────────────────────────────
 
-function Row({ label, py, cur, pm, fmt, indent, bold, note }: RowProps) {
+function SectionBarChart({ prevCount, curCount, prevAmount, curAmount, color }:
+  { prevCount: number; curCount: number; prevAmount: number; curAmount: number; color: string }) {
+
+  const cp = prevCount  > 0 ? Math.min(Math.round((curCount  / prevCount)  * 100), 200) : 0;
+  const ap = prevAmount > 0 ? Math.min(Math.round((curAmount / prevAmount) * 100), 200) : 0;
+  const maxP = Math.max(cp, ap, 110);
+  const H = 100; const chartH = 72; const btm = H - 16;
+
+  const barH = (v: number) => Math.round((v / maxP) * chartH);
+  const yPos = (v: number) => btm - barH(v);
+
   return (
-    <tr className={bold ? 'total-row' : 'sub-row'}>
-      <td className={`col-dept${indent ? ' indent' : ''}`}>
-        {label}
-        {note && <span className="row-note">（{note}）</span>}
-      </td>
-      <td className="col-num">{fmt(py)}</td>
-      <td className="col-num">{fmt(cur)}</td>
-      <td className={`col-pct ${upDown(cur, py)}`}>{pct(cur, py)}</td>
-      <td className={`col-pct ${upDown(cur, pm)}`}>{pct(cur, pm)}</td>
-    </tr>
+    <svg width="130" height={H} viewBox={`0 0 130 ${H}`} style={{ overflow: 'visible' }}>
+      {[0, 50, 100, ...(maxP > 110 ? [150] : [])].map(v => {
+        const y = btm - (v / maxP) * chartH;
+        return (
+          <g key={v}>
+            <line x1="14" x2="126" y1={y} y2={y} stroke="#e8e8e8" strokeWidth="0.8" />
+            <text x="12" y={y + 3} textAnchor="end" fontSize="7" fill="#bbb">{v}%</text>
+          </g>
+        );
+      })}
+      {/* 本数 group */}
+      <rect x="18" y={yPos(100)} width="18" height={barH(100)} fill="#d8d8d8" rx="2" />
+      <rect x="38" y={yPos(cp)}  width="18" height={barH(cp)}  fill={color} rx="2" opacity={0.9} />
+      <text x="37" y={btm + 11} textAnchor="middle" fontSize="7.5" fill="#666">本数</text>
+      {/* 金額 group */}
+      <rect x="72" y={yPos(100)} width="18" height={barH(100)} fill="#d8d8d8" rx="2" />
+      <rect x="92" y={yPos(ap)}  width="18" height={barH(ap)}  fill={color} rx="2" opacity={0.9} />
+      <text x="91" y={btm + 11} textAnchor="middle" fontSize="7.5" fill="#666">金額</text>
+    </svg>
   );
 }
 
-export default function MonthlyReport({ store, defaultYear, onClose }: Props) {
-  const currentReiwa = new Date().getFullYear() - 2018;
-  const allYears = [...new Set([
-    ...Object.keys(store).map(Number),
-    currentReiwa,
-  ])].sort((a, b) => b - a);
+// ─── Donut chart ──────────────────────────────────────────────────────────────
 
-  const [selYear, setSelYear] = useState(defaultYear);
-  const [selMonth, setSelMonth] = useState(new Date().getMonth() + 1);
+function DonutChart({ cur, prevY }: { cur: MonthData | null; prevY: MonthData | null }) {
+  const total = stTotal(cur);
+  const R = 52; const CX = 65; const CY = 65;
 
-  const cur  = store[selYear]?.[selMonth] ?? null;
-  const prevM = selMonth === 1
-    ? (store[selYear - 1]?.[12] ?? null)
-    : (store[selYear]?.[selMonth - 1] ?? null);
-  const prevY = store[selYear - 1]?.[selMonth] ?? null;
+  if (total === 0) {
+    return <div className="chart-empty-sm">データなし</div>;
+  }
 
-  const stCur  = salesTotal(cur);
-  const stPrevM = salesTotal(prevM);
-  const stPrevY = salesTotal(prevY);
+  let startAngle = -Math.PI / 2;
+  const slices = CHANNELS.map(ch => {
+    const val = cur?.sales[ch.key] ?? 0;
+    const angle = total > 0 ? (val / total) * 2 * Math.PI : 0;
+    const end = startAngle + angle;
+    const x1 = CX + R * Math.cos(startAngle); const y1 = CY + R * Math.sin(startAngle);
+    const x2 = CX + R * Math.cos(end);         const y2 = CY + R * Math.sin(end);
+    const large = angle > Math.PI ? 1 : 0;
+    const path = val > 0 ? `M${CX},${CY} L${x1},${y1} A${R},${R},0,${large},1,${x2},${y2}Z` : '';
+    const p = calcPct(val, prevY?.sales[ch.key] ?? 0);
+    startAngle = end;
+    return { ...ch, val, p, path };
+  });
 
   return (
-    <div className="report-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="report-modal">
-
-        {/* Controls */}
-        <div className="report-controls no-print">
-          <div className="report-selectors">
-            <label>年：</label>
-            <select value={selYear} onChange={e => setSelYear(Number(e.target.value))}>
-              {allYears.map(y => <option key={y} value={y}>令和{y}年</option>)}
-            </select>
-            <label>月：</label>
-            <select value={selMonth} onChange={e => setSelMonth(Number(e.target.value))}>
-              {Array.from({length:12},(_,i)=>i+1).map(m =>
-                <option key={m} value={m}>{m}月</option>
-              )}
-            </select>
+    <div className="mr-donut-wrap">
+      <svg width="130" height="130" viewBox="0 0 130 130">
+        {slices.map((s, i) => s.path && <path key={i} d={s.path} fill={s.color} opacity={0.88} />)}
+        <circle cx={CX} cy={CY} r={R * 0.5} fill="white" />
+        <text x={CX} y={CY + 4} textAnchor="middle" fontSize="8.5" fill="#777">営業合計</text>
+      </svg>
+      <div className="mr-donut-legend">
+        {slices.map(s => (
+          <div key={s.key} className="mr-legend-row">
+            <span className="mr-legend-dot" style={{ background: s.color }} />
+            <span className="mr-legend-name">{s.label}</span>
+            <span className={`mr-legend-pct ${s.p === null ? 'na' : s.p >= 100 ? 'up' : 'down'}`}>
+              {s.p !== null ? `${s.p}%` : '—'}
+            </span>
           </div>
-          <div className="report-actions">
-            <button className="report-print-btn" onClick={() => window.print()}>🖨️ 印刷</button>
-            <button className="report-close-btn" onClick={onClose}>✕ 閉じる</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Auto insights ────────────────────────────────────────────────────────────
+
+function genPoints(cur: MonthData | null, prevY: MonthData | null): string[] {
+  if (!cur) return [];
+  const pts: string[] = [];
+
+  const ranked = CHANNELS.map(ch => ({
+    label: ch.label,
+    cur: cur.sales[ch.key] ?? 0,
+    p: calcPct(cur.sales[ch.key] ?? 0, prevY?.sales[ch.key] ?? 0),
+  })).filter(c => c.cur > 0 && c.p !== null).sort((a, b) => (b.p ?? 0) - (a.p ?? 0));
+
+  if (ranked[0]?.p !== null) {
+    const best = ranked[0];
+    pts.push(best.p! >= 110
+      ? `${best.label}部門が前年同月比${best.p}%と大きく伸長し、全体の売上を牽引しています。`
+      : best.p! >= 100
+        ? `${best.label}部門が前年同月比${best.p}%とプラス成長を達成しています。`
+        : `全部門で前年実績を下回っており、厳しい状況が続いています。`);
+  }
+
+  const bp = calcPct(cur.sales.butsudan, prevY?.sales.butsudan ?? 0);
+  if (bp !== null && cur.sales.butsudan > 0) {
+    pts.push(bp >= 100
+      ? `仏壇部門もプラス成長となり、堅調に推移しています。`
+      : `仏壇部門は前年同月比${bp}%と苦戦しています。`);
+  }
+
+  const kp = calcPct(cur.kiji.count, prevY?.kiji.count ?? 0);
+  const ka = calcPct(cur.kiji.amount, prevY?.kiji.amount ?? 0);
+  if (kp !== null || ka !== null) {
+    pts.push((kp ?? 0) < 100 && (ka ?? 0) >= 90
+      ? `木地製造部・まとめ部の本数は前年を下回っていますが、金額面では一定の成果を確保しています。`
+      : (kp ?? 0) >= 100
+        ? `木地製造部は本数・金額ともに前年を上回る好調な実績となっています。`
+        : `木地製造部は本数・金額ともに前年を下回っており、改善が必要な状況です。`);
+  }
+
+  return pts.slice(0, 3);
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function MonthlyReport({ store, defaultYear, onClose }: Props) {
+  const currentReiwa = new Date().getFullYear() - 2018;
+  const allYears = [...new Set([...Object.keys(store).map(Number), currentReiwa])].sort((a, b) => b - a);
+
+  const [selYear, setSelYear]   = useState(defaultYear);
+  const [selMonth, setSelMonth] = useState(new Date().getMonth() + 1);
+
+  const cur   = store[selYear]?.[selMonth]      ?? null;
+  const prevM = selMonth === 1
+    ? (store[selYear - 1]?.[12]     ?? null)
+    : (store[selYear]?.[selMonth - 1] ?? null);
+  const prevY = store[selYear - 1]?.[selMonth]  ?? null;
+
+  const stCur   = stTotal(cur);
+  const stPrevM = stTotal(prevM);
+  const stPrevY = stTotal(prevY);
+  const stPct   = calcPct(stCur, stPrevY);
+  const today   = new Date().toLocaleDateString('ja-JP');
+  const points  = genPoints(cur, prevY);
+
+  const channelLabel = (ch: typeof CHANNELS[0]) =>
+    ch.key === 'bukken' && cur?.salesMemo?.bukken
+      ? `${ch.label}（${cur.salesMemo.bukken}）`
+      : ch.label;
+
+  const secData = (key: 'kiji' | 'tosou' | 'matome') => ({
+    count:       cur?.[key].count  ?? 0,
+    amount:      cur?.[key].amount ?? 0,
+    prevYCount:  prevY?.[key].count  ?? 0,
+    prevYAmount: prevY?.[key].amount ?? 0,
+  });
+
+  return (
+    <div className="mr-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="mr-modal">
+
+        {/* ── Header ── */}
+        <div className="mr-header">
+          <div>
+            <div className="mr-company">松永工房</div>
+            <div className="mr-title">生産月別成績表</div>
+            <div className="mr-period">令和{selYear}年 {selMonth}月度</div>
+          </div>
+          <div className="mr-header-right">
+            <div className="mr-created">作成日：{today}</div>
+            <div className="mr-hcontrols no-print">
+              <select value={selYear} onChange={e => setSelYear(Number(e.target.value))}>
+                {allYears.map(y => <option key={y} value={y}>令和{y}年</option>)}
+              </select>
+              <select value={selMonth} onChange={e => setSelMonth(Number(e.target.value))}>
+                {Array.from({length:12},(_,i)=>i+1).map(m =>
+                  <option key={m} value={m}>{m}月</option>)}
+              </select>
+              <button className="mr-print-btn" onClick={() => window.print()}>🖨 印刷する</button>
+              <button className="mr-close-btn" onClick={onClose}>✕</button>
+            </div>
           </div>
         </div>
 
-        {/* Print area */}
-        <div className="print-area">
-          <div className="report-header">
-            <h2>松永工房　生産月別成績表</h2>
-            <p>令和{selYear}年&nbsp;{selMonth}月度</p>
+        {/* ── Body ── */}
+        <div className="mr-body">
+
+          {/* Top row: summary card + donut */}
+          <div className="mr-top-row">
+            <div className="mr-card">
+              <div className="mr-card-label">全体サマリー（合計）</div>
+              <div className="mr-summary-grid">
+                <div>
+                  <div className="mr-sg-head">当月実績</div>
+                  <div className="mr-sg-big">{stCur > 0 ? `¥${stCur.toLocaleString()}` : '—'}</div>
+                </div>
+                <div>
+                  <div className="mr-sg-head">前年同月実績</div>
+                  <div className="mr-sg-prev">{stPrevY > 0 ? `¥${stPrevY.toLocaleString()}` : '—'}</div>
+                </div>
+                <div>
+                  <div className="mr-sg-head">前年同月比</div>
+                  <div className={`mr-sg-ratio ${stPct === null ? 'na' : stPct >= 100 ? 'up' : 'down'}`}>
+                    {stPct !== null ? `${stPct}%` : '—'}
+                    {stPct !== null && stPct >= 100 && ' ↗'}
+                    {stPct !== null && stPct < 100  && ' ↘'}
+                  </div>
+                </div>
+                <div>
+                  <div className="mr-sg-head">前月比</div>
+                  <div className={`mr-sg-ratio ${(() => { const p = calcPct(stCur, stPrevM); return p === null ? 'na' : p >= 100 ? 'up' : 'down'; })()}`}>
+                    {pctStr(stCur, stPrevM)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mr-card">
+              <div className="mr-card-label">部門別 前年同月比</div>
+              <DonutChart cur={cur} prevY={prevY} />
+            </div>
           </div>
 
-          <table className="report-table">
+          {/* Department table */}
+          <div className="mr-sec-title">部門別実績</div>
+          <table className="mr-dept-table">
             <thead>
               <tr>
-                <th className="col-dept">部門 / 項目</th>
-                <th className="col-num">前年同月実績</th>
-                <th className="col-num">当月実績</th>
-                <th className="col-pct">前年比</th>
-                <th className="col-pct">前月比</th>
+                <th className="mr-th-name">部門 / 項目</th>
+                <th className="mr-th-num">前年同月実績</th>
+                <th className="mr-th-num">当月実績</th>
+                <th className="mr-th-pct">前年同月比</th>
+                <th className="mr-th-pct">前月比</th>
               </tr>
             </thead>
             <tbody>
-              {/* 営業部 */}
-              <tr className="section-header">
-                <td colSpan={5}>【 営業部 】</td>
-              </tr>
-              {SALES_LABELS.map(({ key, label }) => {
-                const c  = cur?.sales[key]   ?? 0;
-                const pm = prevM?.sales[key] ?? 0;
-                const py = prevY?.sales[key] ?? 0;
-                const note = key === 'bukken' ? (cur?.salesMemo?.bukken || undefined) : undefined;
-                return <Row key={key} label={label} py={py} cur={c} pm={pm} fmt={yen} indent note={note} />;
+              {CHANNELS.map(ch => {
+                const c  = cur?.sales[ch.key]   ?? 0;
+                const py = prevY?.sales[ch.key] ?? 0;
+                const pm = prevM?.sales[ch.key] ?? 0;
+                const p  = calcPct(c, py);
+                const pm2 = calcPct(c, pm);
+                return (
+                  <tr key={ch.key} className="mr-dept-row">
+                    <td>
+                      <div className="mr-dept-cell">
+                        <span className="mr-icon-circle" style={{ background: ch.color }}>{ch.abbr}</span>
+                        {channelLabel(ch)}
+                      </div>
+                    </td>
+                    <td className="mr-td-num">{yen(py)}</td>
+                    <td className="mr-td-num">{yen(c)}</td>
+                    <td className="mr-td-pct">
+                      <PctCell cur={c} base={py} />
+                    </td>
+                    <td className="mr-td-pct">
+                      <PctCell cur={c} base={pm} />
+                    </td>
+                  </tr>
+                );
               })}
-              <Row label="営業部　合計" py={stPrevY} cur={stCur} pm={stPrevM} fmt={yen} bold />
-
-              {/* 木地製造部 */}
-              <tr className="section-header">
-                <td colSpan={5}>【 木地製造部 】</td>
+              <tr className="mr-dept-total">
+                <td><div className="mr-dept-cell">営業部　合計</div></td>
+                <td className="mr-td-num">{yen(stPrevY)}</td>
+                <td className="mr-td-num">{yen(stCur)}</td>
+                <td className="mr-td-pct"><PctCell cur={stCur} base={stPrevY} /></td>
+                <td className="mr-td-pct"><PctCell cur={stCur} base={stPrevM} /></td>
               </tr>
-              <Row
-                label="本数" indent
-                py={prevY?.kiji.count ?? 0} cur={cur?.kiji.count ?? 0} pm={prevM?.kiji.count ?? 0}
-                fmt={hon}
-              />
-              <Row
-                label="金額" indent
-                py={prevY?.kiji.amount ?? 0} cur={cur?.kiji.amount ?? 0} pm={prevM?.kiji.amount ?? 0}
-                fmt={yen}
-              />
-
-              {/* 塗装部 */}
-              <tr className="section-header">
-                <td colSpan={5}>【 塗装部 】</td>
-              </tr>
-              <Row
-                label="本数" indent
-                py={prevY?.tosou.count ?? 0} cur={cur?.tosou.count ?? 0} pm={prevM?.tosou.count ?? 0}
-                fmt={hon}
-              />
-              <Row
-                label="金額" indent
-                py={prevY?.tosou.amount ?? 0} cur={cur?.tosou.amount ?? 0} pm={prevM?.tosou.amount ?? 0}
-                fmt={yen}
-              />
-
-              {/* まとめ部 */}
-              <tr className="section-header">
-                <td colSpan={5}>【 まとめ部 】</td>
-              </tr>
-              <Row
-                label="本数" indent
-                py={prevY?.matome.count ?? 0} cur={cur?.matome.count ?? 0} pm={prevM?.matome.count ?? 0}
-                fmt={hon}
-              />
-              <Row
-                label="金額" indent
-                py={prevY?.matome.amount ?? 0} cur={cur?.matome.amount ?? 0} pm={prevM?.matome.amount ?? 0}
-                fmt={yen}
-              />
             </tbody>
           </table>
 
-          <div className="report-footer">
-            作成日：{new Date().toLocaleDateString('ja-JP')}
+          {/* Section cards */}
+          <div className="mr-sec-cards">
+            {SECTIONS.map(s => {
+              const d = secData(s.key);
+              const cp = calcPct(d.count,  d.prevYCount);
+              const ap = calcPct(d.amount, d.prevYAmount);
+              return (
+                <div key={s.key} className="mr-sec-card" style={{ borderTop: `4px solid ${s.color}` }}>
+                  <div className="mr-sc-title" style={{ color: s.color }}>
+                    {s.icon} {s.title}
+                  </div>
+                  <div className="mr-sc-row">
+                    <span className="mr-sc-label">本数</span>
+                    <span className="mr-sc-val">{d.count > 0 ? `${d.count.toLocaleString()}本` : '—'}</span>
+                    {cp !== null && (
+                      <span className={`mr-sc-pct ${cp >= 100 ? 'up' : 'down'}`}>（前年比 {cp}%）</span>
+                    )}
+                  </div>
+                  <div className="mr-sc-row">
+                    <span className="mr-sc-label">金額</span>
+                    <span className="mr-sc-val">{yen(d.amount)}</span>
+                    {ap !== null && (
+                      <span className={`mr-sc-pct ${ap >= 100 ? 'up' : 'down'}`}>（前年比 {ap}%）</span>
+                    )}
+                  </div>
+                  <div className="mr-chart-wrap">
+                    <SectionBarChart
+                      prevCount={d.prevYCount} curCount={d.count}
+                      prevAmount={d.prevYAmount} curAmount={d.amount}
+                      color={s.color}
+                    />
+                    <div className="mr-chart-legend">
+                      <span><span className="mr-legend-sq" style={{ background: '#d8d8d8' }} />前年同月</span>
+                      <span><span className="mr-legend-sq" style={{ background: s.color }} />当月</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+
+          {/* Points */}
+          {points.length > 0 && (
+            <div className="mr-points">
+              <div className="mr-points-title">💡 ポイント</div>
+              <ul className="mr-points-list">
+                {points.map((p, i) => <li key={i}>{p}</li>)}
+              </ul>
+            </div>
+          )}
+
         </div>
       </div>
     </div>
