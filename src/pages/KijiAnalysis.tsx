@@ -681,7 +681,7 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
   const [saved, setSaved] = useState(false);
 
   // New item entry state
-  const [newCategory, setNewCategory] = useState(CATEGORIES[0] ?? 'Ca');
+  const [newCategory, setNewCategory] = useState<string>(CATEGORIES[0]);
   const [newProductName, setNewProductName] = useState('');
   const [newCount, setNewCount] = useState(1);
   const [newAmount, setNewAmount] = useState(0);
@@ -800,7 +800,6 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
               }}
             >
               {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              <option value="その他">その他</option>
             </select>
 
             <label>品名：</label>
