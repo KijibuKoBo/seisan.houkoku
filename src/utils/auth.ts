@@ -1,4 +1,5 @@
 import { User, AuthSession, Role } from '../types';
+import { apiSet } from './api';
 
 const USERS_KEY = 'matsunaga_users';
 const SESSION_KEY = 'matsunaga_session';
@@ -36,7 +37,9 @@ export function loadUsers(): User[] {
 }
 
 function saveUsers(users: User[]): void {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  const json = JSON.stringify(users);
+  localStorage.setItem(USERS_KEY, json);
+  apiSet(USERS_KEY, json);
 }
 
 export async function initDefaultUsers(): Promise<void> {

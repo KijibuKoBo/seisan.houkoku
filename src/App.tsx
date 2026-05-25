@@ -3,6 +3,7 @@ import { YearStore, MonthData, AuthSession, KijiItem } from './types';
 import { loadStore, saveStore, setMonthData } from './utils/store';
 import { initDefaultUsers, getSession, logout } from './utils/auth';
 import { saveKijiItems } from './utils/kijiStore';
+import { syncFromServer } from './utils/api';
 import YearlyTable, { CompactSummary } from './components/YearlyTable';
 import MonthModal from './components/MonthModal';
 import LoginPage from './components/LoginPage';
@@ -24,8 +25,15 @@ export default function App() {
   const [selectedYear, setSelectedYear] = useState(currentReiwa);
   const [editingMonth, setEditingMonth] = useState<number | null>(null);
   const [page, setPage] = useState<Page>('report');
+  const [syncing, setSyncing] = useState(true);
 
-  useEffect(() => { initDefaultUsers(); }, []);
+  useEffect(() => {
+    initDefaultUsers();
+    syncFromServer().finally(() => {
+      setStore(loadStore());
+      setSyncing(false);
+    });
+  }, []);
 
   const availableYears = Array.from(
     new Set([...getDefaultYears(), ...Object.keys(store).map(Number)])
@@ -65,6 +73,17 @@ export default function App() {
 
   const getPrevYearMonthData = (month: number): MonthData | null =>
     store[selectedYear - 1]?.[month] ?? null;
+
+  if (syncing) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', fontFamily: 'Meiryo, sans-serif', color: '#555', fontSize: 15,
+      }}>
+        データを読み込み中...
+      </div>
+    );
+  }
 
   if (!session) {
     return <LoginPage onLogin={handleLogin} />;

@@ -1,4 +1,5 @@
 import { YearStore, MonthData } from '../types';
+import { apiSet } from './api';
 
 const KEY = 'matsunaga_seisan';
 
@@ -12,7 +13,9 @@ export function loadStore(): YearStore {
 }
 
 export function saveStore(store: YearStore): void {
-  localStorage.setItem(KEY, JSON.stringify(store));
+  const json = JSON.stringify(store);
+  localStorage.setItem(KEY, json);
+  apiSet(KEY, json);
 }
 
 export function getMonthData(store: YearStore, year: number, month: number): MonthData | null {

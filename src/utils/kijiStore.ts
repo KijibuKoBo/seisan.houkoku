@@ -1,4 +1,5 @@
 import { KijiItem } from '../types';
+import { apiSet } from './api';
 
 const KEY = 'matsunaga_kiji_items';
 
@@ -10,7 +11,9 @@ function load(): { [ym: string]: KijiItem[] } {
 }
 
 function save(data: { [ym: string]: KijiItem[] }): void {
-  localStorage.setItem(KEY, JSON.stringify(data));
+  const json = JSON.stringify(data);
+  localStorage.setItem(KEY, json);
+  apiSet(KEY, json);
 }
 
 function key(year: number, month: number): string {
