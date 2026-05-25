@@ -39,6 +39,10 @@ export default function MonthModal({ year, month, initial, prevMonth, prevYearMo
     setData(d => ({ ...d, sales: { ...d.sales, [key]: val } }));
   };
 
+  const setSalesMemo = (key: keyof SalesData, val: string) => {
+    setData(d => ({ ...d, salesMemo: { ...d.salesMemo, [key]: val } }));
+  };
+
   const handlePdfResult = (result: PdfParseResult) => {
     setData(d => ({ ...d, kiji: { count: result.totalCount, amount: result.totalAmount } }));
     const items = result.items.map(i => ({ ...i, year, month }));
@@ -52,7 +56,7 @@ export default function MonthModal({ year, month, initial, prevMonth, prevYearMo
     ['butsudan', '仏壇'],
     ['ippanten', '一般店'],
     ['showroom', 'ショールーム'],
-    ['bukken', '物件'],
+    ['bukken', 'その他'],
   ];
 
   const renderRef = (current: number, prev: number | undefined, label: string) => {
@@ -99,7 +103,7 @@ export default function MonthModal({ year, month, initial, prevMonth, prevYearMo
                   <tr>
                     <th>項目</th>
                     <th>金額（円）</th>
-                    <th>参考</th>
+                    <th>備考</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -108,8 +112,13 @@ export default function MonthModal({ year, month, initial, prevMonth, prevYearMo
                       <td className="label-cell">{label}</td>
                       <td>{numInput(data.sales[key], v => setSales(key, v))}</td>
                       <td className="ref-cell">
-                        {renderRef(data.sales[key], prevYearMonth?.sales[key], '前年')}
-                        {renderRef(data.sales[key], prevMonth?.sales[key], '前月')}
+                        <input
+                          type="text"
+                          className="memo-input"
+                          placeholder="備考"
+                          value={data.salesMemo?.[key] ?? ''}
+                          onChange={e => setSalesMemo(key, e.target.value)}
+                        />
                       </td>
                     </tr>
                   ))}

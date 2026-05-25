@@ -33,6 +33,7 @@ export interface MonthData {
   kiji: SectionData;
   tosou: SectionData;
   matome: SectionData;
+  salesMemo?: Partial<Record<keyof SalesData, string>>;
 }
 
 export type YearStore = {

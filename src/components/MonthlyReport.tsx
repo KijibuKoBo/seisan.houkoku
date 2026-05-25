@@ -14,7 +14,7 @@ const SALES_LABELS: { key: keyof SalesData; label: string }[] = [
   { key: 'butsudan', label: '仏壇' },
   { key: 'ippanten', label: '一般店' },
   { key: 'showroom', label: 'ショールーム' },
-  { key: 'bukken',   label: '物件' },
+  { key: 'bukken',   label: 'その他' },
 ];
 
 function salesTotal(d: MonthData | null | undefined): number {

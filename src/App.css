@@ -435,6 +435,20 @@ tfoot .footer-note td {
   gap: 2px;
 }
 
+.memo-input {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.memo-input:focus {
+  outline: none;
+  border-color: #4a9ede;
+}
+
 .ref-badge {
   display: inline-block;
   padding: 1px 6px;
