@@ -185,14 +185,14 @@ export default function KijiReport({ year, month, items, onClose }: Props) {
               <div className="kr-sum-icon" style={{ background: '#1565c0' }}><IconDoc /></div>
               <div>
                 <div className="kr-sum-label">商品数</div>
-                <div className="kr-sum-val">{productCount}品番</div>
+                <div className="kr-sum-val">{productCount}品目</div>
               </div>
             </div>
             <div className="kr-sum-card">
               <div className="kr-sum-icon" style={{ background: '#6a1b9a' }}><IconClipboard /></div>
               <div>
                 <div className="kr-sum-label">特注品</div>
-                <div className="kr-sum-val">{specialCount}品番</div>
+                <div className="kr-sum-val">{specialCount}品目</div>
               </div>
             </div>
           </div>
