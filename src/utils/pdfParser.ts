@@ -22,10 +22,16 @@ interface RawTextItem {
 
 async function extractRawItems(buffer: ArrayBuffer): Promise<RawTextItem[]> {
   const pdfjsLib = await import('pdfjs-dist');
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url
-  ).toString();
+  const workerUrl = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+  try {
+    const resp = await fetch(workerUrl);
+    const code = await resp.text();
+    pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
+      new Blob([code], { type: 'application/javascript' })
+    );
+  } catch {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+  }
 
   const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
   const result: RawTextItem[] = [];
