@@ -8,6 +8,7 @@ interface Props {
   year: number;
   store: YearStore;
   onEditMonth: (month: number) => void;
+  readOnly?: boolean;
 }
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -42,7 +43,7 @@ function CellValue({ value, isCount }: { value: number; isCount?: boolean }) {
   return <>{formatAmount(value)}</>;
 }
 
-export default function YearlyTable({ year, store, onEditMonth }: Props) {
+export default function YearlyTable({ year, store, onEditMonth, readOnly }: Props) {
   const months = store[year] ?? {};
 
   return (
@@ -53,7 +54,7 @@ export default function YearlyTable({ year, store, onEditMonth }: Props) {
             <th className="label-col">令和{year}年</th>
             {MONTHS.map(m => (
               <th key={m} className="month-col">
-                <button className="month-btn" onClick={() => onEditMonth(m)}>
+                <button className="month-btn" onClick={() => !readOnly && onEditMonth(m)} style={readOnly ? { cursor: 'default' } : {}}>
                   {m}月
                   {months[m] && <span className="has-data" title="データあり">●</span>}
                 </button>
@@ -78,9 +79,9 @@ export default function YearlyTable({ year, store, onEditMonth }: Props) {
                   return (
                     <td
                       key={m}
-                      className="data-cell"
-                      onClick={() => onEditMonth(m)}
-                      title="クリックして編集"
+                      className={`data-cell ${readOnly ? '' : 'editable'}`}
+                      onClick={() => !readOnly && onEditMonth(m)}
+                      title={readOnly ? '' : 'クリックして編集'}
                     >
                       <CellValue value={val} isCount={row.isCount} />
                     </td>
@@ -102,7 +103,7 @@ export default function YearlyTable({ year, store, onEditMonth }: Props) {
         <tfoot>
           <tr className="footer-note">
             <td colSpan={MONTHS.length + 4}>
-              ※ 月のセルをクリックするとデータを入力できます
+              {readOnly ? '※ 閲覧モード（編集権限なし）' : '※ 月のセルをクリックするとデータを入力できます'}
             </td>
           </tr>
         </tfoot>

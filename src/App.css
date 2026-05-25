@@ -8,45 +8,106 @@ body {
   color: #222;
 }
 
-/* ヘッダー */
+/* ─── ログイン ─── */
+.login-overlay {
+  position: fixed; inset: 0; background: #1a3a5c;
+  display: flex; align-items: center; justify-content: center;
+}
+.login-box {
+  background: white; border-radius: 10px; padding: 32px 36px;
+  width: 340px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  text-align: center;
+}
+.login-logo { font-size: 22px; font-weight: bold; color: #1a3a5c; margin-bottom: 4px; }
+.login-title { font-size: 13px; color: #666; margin-bottom: 24px; font-weight: normal; }
+.login-form { text-align: left; }
+.login-field { margin-bottom: 14px; }
+.login-field label { display: block; font-size: 11px; color: #666; margin-bottom: 4px; }
+.login-field input {
+  width: 100%; padding: 8px 10px; border: 1px solid #ccc;
+  border-radius: 5px; font-size: 14px; font-family: inherit;
+}
+.login-field input:focus { outline: none; border-color: #4a9ede; box-shadow: 0 0 0 2px rgba(74,158,222,0.2); }
+.login-btn {
+  width: 100%; padding: 10px; background: #1a3a5c; color: white;
+  border: none; border-radius: 5px; font-size: 14px; cursor: pointer;
+  margin-top: 8px; font-family: inherit;
+}
+.login-btn:hover { background: #2a5a8c; }
+.login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.login-error { color: #c00; font-size: 12px; margin-bottom: 8px; padding: 6px 10px; background: #fee; border-radius: 4px; }
+.login-note { font-size: 11px; color: #bbb; margin-top: 16px; }
+
+/* ─── ヘッダー ─── */
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  padding: 0 16px;
   background: #1a3a5c;
   color: white;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
   position: sticky;
   top: 0;
   z-index: 100;
+  min-height: 48px;
 }
+.header-left { display: flex; align-items: center; gap: 0; }
+.header-right { display: flex; align-items: center; gap: 10px; }
 
 .app-header h1 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: bold;
   letter-spacing: 0.05em;
+  white-space: nowrap;
+  padding: 12px 16px 12px 0;
+  border-right: 1px solid rgba(255,255,255,0.2);
+  margin-right: 12px;
 }
 
-.year-selector {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+/* ─── ナビゲーション ─── */
+.app-nav { display: flex; gap: 2px; }
+.nav-btn {
+  padding: 14px 14px;
+  border: none; border-bottom: 3px solid transparent;
+  background: none; color: rgba(255,255,255,0.75);
+  cursor: pointer; font-size: 13px; font-family: inherit;
+  transition: all 0.15s;
+}
+.nav-btn:hover { color: white; background: rgba(255,255,255,0.1); }
+.nav-btn.active { color: white; border-bottom-color: #4a9ede; font-weight: bold; }
+
+.session-info { font-size: 12px; color: rgba(255,255,255,0.8); }
+.role-badge {
+  background: #4a9ede; color: white; font-size: 10px;
+  padding: 1px 6px; border-radius: 8px; margin-left: 6px;
+}
+.logout-btn {
+  padding: 4px 12px; border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 4px; background: none; color: white;
+  cursor: pointer; font-size: 12px; font-family: inherit;
+}
+.logout-btn:hover { background: rgba(255,255,255,0.1); }
+
+/* ─── Year bar (on report page) ─── */
+.year-bar {
+  display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px;
 }
 
 .year-btn {
   padding: 4px 10px;
-  border: 1px solid rgba(255,255,255,0.3);
+  border: 1px solid #ccc;
   border-radius: 4px;
-  background: transparent;
-  color: white;
+  background: white;
+  color: #444;
   cursor: pointer;
   font-size: 12px;
   transition: all 0.15s;
+  font-family: inherit;
 }
 
-.year-btn:hover { background: rgba(255,255,255,0.15); }
-.year-btn.active { background: #4a9ede; border-color: #4a9ede; font-weight: bold; }
+.year-btn:hover { background: #f0f0f0; border-color: #999; }
+.year-btn.active { background: #1a3a5c; color: white; border-color: #1a3a5c; font-weight: bold; }
 .year-btn.add-year { border-style: dashed; opacity: 0.7; }
 
 /* メイン */
@@ -159,7 +220,7 @@ body {
   transition: background 0.1s;
 }
 
-.data-cell:hover { background: #fffde0 !important; }
+.data-cell.editable:hover { background: #fffde0 !important; }
 
 /* 行の色分け */
 .row-sales > td { background: #e8f0fa; }
@@ -473,9 +534,36 @@ tfoot .footer-note td {
   margin-left: 4px;
 }
 
+/* ─── ユーザー管理 ─── */
+.user-manager { background: white; border-radius: 6px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.1); max-width: 700px; }
+.user-manager h2 { font-size: 16px; margin-bottom: 16px; color: #1a3a5c; }
+.um-section { margin-bottom: 24px; }
+.um-section h3 { font-size: 13px; color: #555; margin-bottom: 10px; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
+.um-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.um-table th, .um-table td { border: 1px solid #e0e0e0; padding: 6px 10px; text-align: left; }
+.um-table th { background: #f5f5f5; font-weight: 600; }
+.um-actions { display: flex; gap: 6px; }
+.role-select { border: 1px solid #ccc; border-radius: 3px; padding: 2px 6px; font-family: inherit; font-size: 12px; }
+.btn-sm {
+  padding: 3px 10px; border: 1px solid #ccc; border-radius: 3px;
+  background: white; cursor: pointer; font-size: 11px; font-family: inherit;
+}
+.btn-sm:hover { background: #f0f0f0; }
+.btn-sm.danger { border-color: #f99; color: #c00; }
+.btn-sm.danger:hover { background: #fee; }
+.um-error { color: #c00; background: #fee; border: 1px solid #f99; border-radius: 4px; padding: 6px 10px; margin-bottom: 12px; font-size: 12px; }
+.um-success { color: #060; background: #efe; border: 1px solid #9c9; border-radius: 4px; padding: 6px 10px; margin-bottom: 12px; font-size: 12px; }
+.um-add-form { display: flex; flex-direction: column; gap: 10px; }
+.um-form-row { display: flex; align-items: center; gap: 12px; }
+.um-form-row label { width: 80px; font-size: 12px; color: #555; flex-shrink: 0; }
+.um-form-row input, .um-form-row select {
+  flex: 1; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px;
+  font-size: 13px; font-family: inherit;
+}
+
 /* レスポンシブ */
 @media (max-width: 600px) {
-  .app-header { flex-direction: column; gap: 8px; align-items: flex-start; }
+  .app-header { flex-direction: column; gap: 0; align-items: stretch; }
   .compact-summary { flex-direction: column; }
   .modal { width: 100%; max-height: 100vh; border-radius: 0; }
 }

@@ -1,88 +1,126 @@
-import { useState, useCallback } from 'react';
-import { YearStore, MonthData } from './types';
+import { useState, useCallback, useEffect } from 'react';
+import { YearStore, MonthData, AuthSession, KijiItem } from './types';
 import { loadStore, saveStore, setMonthData } from './utils/store';
+import { initDefaultUsers, getSession, logout } from './utils/auth';
+import { saveKijiItems } from './utils/kijiStore';
 import YearlyTable, { CompactSummary } from './components/YearlyTable';
 import MonthModal from './components/MonthModal';
+import LoginPage from './components/LoginPage';
+import UserManager from './components/UserManager';
+import KijiAnalysis from './pages/KijiAnalysis';
 import './App.css';
 
-// 現在の令和年を計算（令和1年 = 2019年）
 const currentReiwa = new Date().getFullYear() - 2018;
 
 function getDefaultYears(): number[] {
-  const years = [];
-  for (let y = currentReiwa; y >= Math.max(1, currentReiwa - 5); y--) {
-    years.push(y);
-  }
-  return years;
+  return Array.from({ length: 6 }, (_, i) => currentReiwa - i);
 }
 
+type Page = 'report' | 'kiji' | 'users';
+
 export default function App() {
+  const [session, setSession] = useState<AuthSession | null>(getSession);
   const [store, setStore] = useState<YearStore>(loadStore);
   const [selectedYear, setSelectedYear] = useState(currentReiwa);
   const [editingMonth, setEditingMonth] = useState<number | null>(null);
+  const [page, setPage] = useState<Page>('report');
+
+  useEffect(() => { initDefaultUsers(); }, []);
 
   const availableYears = Array.from(
     new Set([...getDefaultYears(), ...Object.keys(store).map(Number)])
   ).sort((a, b) => b - a);
 
-  const handleSave = useCallback((data: MonthData) => {
+  const handleLogin = (s: AuthSession) => setSession(s);
+
+  const handleLogout = () => { logout(); setSession(null); };
+
+  const handleSave = useCallback((data: MonthData, kijiItems: KijiItem[]) => {
     if (editingMonth === null) return;
     const next = setMonthData(store, selectedYear, editingMonth, data);
     setStore(next);
     saveStore(next);
+    if (kijiItems.length > 0) saveKijiItems(selectedYear, editingMonth, kijiItems);
     setEditingMonth(null);
   }, [store, selectedYear, editingMonth]);
 
   const getPrevMonthData = (month: number): MonthData | null => {
-    if (month === 1) {
-      return store[selectedYear - 1]?.[12] ?? null;
-    }
+    if (month === 1) return store[selectedYear - 1]?.[12] ?? null;
     return store[selectedYear]?.[month - 1] ?? null;
   };
 
-  const getPrevYearMonthData = (month: number): MonthData | null => {
-    return store[selectedYear - 1]?.[month] ?? null;
-  };
+  const getPrevYearMonthData = (month: number): MonthData | null =>
+    store[selectedYear - 1]?.[month] ?? null;
+
+  if (!session) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
+  const canEdit = session.role === 'admin';
 
   return (
     <div className="app">
       <header className="app-header">
         <div className="header-left">
           <h1>松永工房 生産月次報告</h1>
-        </div>
-        <div className="year-selector">
-          {availableYears.map(y => (
-            <button
-              key={y}
-              className={`year-btn ${y === selectedYear ? 'active' : ''}`}
-              onClick={() => setSelectedYear(y)}
-            >
-              令和{y}年
+          <nav className="app-nav">
+            <button className={`nav-btn ${page === 'report' ? 'active' : ''}`} onClick={() => setPage('report')}>
+              月次集計
             </button>
-          ))}
-          <button
-            className="year-btn add-year"
-            onClick={() => {
-              const newYear = Math.min(...availableYears) - 1;
-              if (newYear >= 1) setSelectedYear(newYear);
-            }}
-            title="過去年を追加"
-          >
-            ＋
-          </button>
+            <button className={`nav-btn ${page === 'kiji' ? 'active' : ''}`} onClick={() => setPage('kiji')}>
+              木地部分析
+            </button>
+            {canEdit && (
+              <button className={`nav-btn ${page === 'users' ? 'active' : ''}`} onClick={() => setPage('users')}>
+                ユーザー管理
+              </button>
+            )}
+          </nav>
+        </div>
+        <div className="header-right">
+          <span className="session-info">
+            {session.displayName}
+            {session.role === 'admin' && <span className="role-badge">管理者</span>}
+          </span>
+          <button className="logout-btn" onClick={handleLogout}>ログアウト</button>
         </div>
       </header>
 
       <main className="app-main">
-        <CompactSummary year={selectedYear} store={store} />
-        <YearlyTable
-          year={selectedYear}
-          store={store}
-          onEditMonth={setEditingMonth}
-        />
+        {page === 'report' && (
+          <>
+            <div className="year-bar">
+              {availableYears.map(y => (
+                <button
+                  key={y}
+                  className={`year-btn ${y === selectedYear ? 'active' : ''}`}
+                  onClick={() => setSelectedYear(y)}
+                >
+                  令和{y}年
+                </button>
+              ))}
+              <button
+                className="year-btn add-year"
+                onClick={() => setSelectedYear(Math.min(...availableYears) - 1)}
+                title="過去年を追加"
+              >＋</button>
+            </div>
+            <CompactSummary year={selectedYear} store={store} />
+            <YearlyTable
+              year={selectedYear}
+              store={store}
+              onEditMonth={canEdit ? setEditingMonth : () => {}}
+              readOnly={!canEdit}
+            />
+          </>
+        )}
+
+        {page === 'kiji' && <KijiAnalysis />}
+
+        {page === 'users' && canEdit && <UserManager />}
       </main>
 
-      {editingMonth !== null && (
+      {editingMonth !== null && canEdit && (
         <MonthModal
           year={selectedYear}
           month={editingMonth}

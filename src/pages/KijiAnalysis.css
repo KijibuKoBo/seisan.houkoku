@@ -1,0 +1,135 @@
+.kiji-analysis { padding: 12px 16px; }
+
+.kiji-empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; height: 300px; color: #888;
+  text-align: center; line-height: 2;
+}
+.kiji-empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+/* Year filter */
+.kiji-year-filter {
+  display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap; margin-bottom: 10px;
+}
+.filter-label { font-size: 12px; color: #666; }
+.filter-total { font-size: 12px; color: #555; margin-left: 8px; padding-left: 8px; border-left: 1px solid #ddd; }
+
+.year-chip {
+  padding: 3px 10px; border-radius: 12px; border: 1px solid #ccc;
+  background: white; font-size: 12px; cursor: pointer; font-family: inherit;
+}
+.year-chip:hover { background: #f0f0f0; }
+.year-chip.active { background: #1a3a5c; color: white; border-color: #1a3a5c; }
+
+/* Tabs */
+.kiji-tabs {
+  display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 12px;
+}
+.kiji-tab {
+  padding: 7px 16px; border: none; border-bottom: 3px solid transparent;
+  background: none; cursor: pointer; font-size: 13px; color: #666;
+  font-family: inherit; margin-bottom: -2px;
+}
+.kiji-tab:hover { background: #f5f5f5; }
+.kiji-tab.active { color: #1a3a5c; font-weight: bold; border-bottom-color: #1a3a5c; }
+
+.kiji-content { background: white; border-radius: 6px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.kiji-section { }
+
+/* Section titles */
+.section-title {
+  font-size: 14px; margin: 0 0 10px; color: #1a3a5c; font-weight: bold;
+}
+.title-sub { font-size: 11px; color: #888; font-weight: normal; margin-left: 6px; }
+
+/* Two-column layout */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+/* Horizontal bar chart */
+.hbar-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 5px; min-height: 24px;
+}
+.hbar-row.clickable { cursor: pointer; padding: 2px 4px; border-radius: 3px; }
+.hbar-row.clickable:hover { background: #f0f5ff; }
+.hbar-label {
+  width: 180px; font-size: 11px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; flex-shrink: 0;
+}
+.hbar-track { flex: 1; height: 14px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
+.hbar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.hbar-value { font-size: 11px; color: #555; min-width: 60px; text-align: right; flex-shrink: 0; }
+
+/* Line chart */
+.line-chart { display: block; width: 100%; max-height: 180px; }
+.chart-empty { text-align: center; color: #bbb; padding: 20px; font-size: 12px; }
+
+/* Donut chart */
+.donut-chart { width: 160px; height: 160px; flex-shrink: 0; }
+
+/* Category legend */
+.cat-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #555; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* Tables */
+.kiji-table {
+  width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px;
+}
+.kiji-table th, .kiji-table td {
+  border: 1px solid #e0e0e0; padding: 5px 8px; text-align: left;
+}
+.kiji-table th { background: #f5f5f5; font-weight: 600; color: #555; }
+.kiji-table tr.clickable { cursor: pointer; }
+.kiji-table tr.clickable:hover td { background: #f0f5ff; }
+.kiji-table td.num { text-align: right; }
+.kiji-table td.zero { color: #ccc; }
+.kiji-table td.bold { font-weight: bold; }
+.yoy-up { color: #c00; font-weight: bold; }
+.yoy-down { color: #060; font-weight: bold; }
+
+/* Category badge */
+.cat-badge {
+  display: inline-block; padding: 1px 7px; border-radius: 10px;
+  background: #e8f0fa; color: #1a3a5c; font-size: 11px;
+}
+
+/* Rank toggle */
+.rank-toggle { display: flex; gap: 4px; margin-bottom: 12px; }
+.rank-toggle button {
+  padding: 4px 12px; border: 1px solid #ccc; border-radius: 4px;
+  background: white; cursor: pointer; font-size: 12px; font-family: inherit;
+}
+.rank-toggle button.active { background: #1a3a5c; color: white; border-color: #1a3a5c; }
+
+/* Product detail */
+.back-btn {
+  background: none; border: none; color: #4a9ede; cursor: pointer;
+  font-size: 12px; padding: 4px 0; font-family: inherit;
+}
+.back-btn:hover { text-decoration: underline; }
+
+.product-detail-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin: 10px 0; padding: 10px 12px; background: #f0f5ff; border-radius: 6px;
+  flex-wrap: wrap; gap: 8px;
+}
+.detail-code { font-size: 11px; color: #888; margin-right: 6px; }
+.detail-name { font-size: 15px; margin-left: 4px; }
+.detail-stats { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: #555; }
+.detail-stats strong { color: #1a3a5c; }
+
+/* Monthly trend */
+.trend-block { margin-bottom: 20px; }
+.trend-year-label { font-weight: bold; font-size: 13px; margin-bottom: 6px; color: #1a3a5c; }
+.trend-table { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.trend-chip { font-size: 11px; color: #555; }
+.trend-chip strong { color: #1a3a5c; }
+
+.kiji-bar-section { margin-top: 16px; }
+
+@media (max-width: 700px) {
+  .two-col { grid-template-columns: 1fr; }
+  .hbar-label { width: 120px; }
+}

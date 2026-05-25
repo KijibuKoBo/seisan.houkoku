@@ -3,9 +3,11 @@ import { parsePdf, PdfParseResult } from '../utils/pdfParser';
 
 interface Props {
   onResult: (result: PdfParseResult) => void;
+  contextYear?: number;
+  contextMonth?: number;
 }
 
-export default function PdfUploader({ onResult }: Props) {
+export default function PdfUploader({ onResult, contextYear, contextMonth }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<PdfParseResult | null>(null);
@@ -19,7 +21,7 @@ export default function PdfUploader({ onResult }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const result = await parsePdf(file);
+      const result = await parsePdf(file, contextYear, contextMonth);
       setPreview(result);
       onResult(result);
     } catch (e) {

@@ -1,27 +1,26 @@
+import { KijiItem } from '../types';
+
 export interface PdfParseResult {
   year?: number;
   month?: number;
   totalCount: number;
   totalAmount: number;
-  items: PdfItem[];
+  items: KijiItem[];
 }
 
-export interface PdfItem {
-  code: string;
-  name: string;
-  count: number;
-  unitPrice: number;
-  amount: number;
-  excluded: boolean; // ＊本数に含めない
+export async function parsePdf(file: File, contextYear?: number, contextMonth?: number): Promise<PdfParseResult> {
+  const buffer = await file.arrayBuffer();
+  const rawItems = await extractRawItems(buffer);
+  return parseRawItems(rawItems, contextYear, contextMonth);
 }
 
-export async function parsePdf(file: File): Promise<PdfParseResult> {
-  const arrayBuffer = await file.arrayBuffer();
-  const text = await extractTextFromPdf(arrayBuffer);
-  return parseText(text);
+interface RawTextItem {
+  str: string;
+  x: number;
+  y: number;
 }
 
-async function extractTextFromPdf(buffer: ArrayBuffer): Promise<string> {
+async function extractRawItems(buffer: ArrayBuffer): Promise<RawTextItem[]> {
   const pdfjsLib = await import('pdfjs-dist');
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -29,131 +28,118 @@ async function extractTextFromPdf(buffer: ArrayBuffer): Promise<string> {
   ).toString();
 
   const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
-  let fullText = '';
+  const result: RawTextItem[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-
-    // Group text items by Y coordinate so that "79" and "本" on the same row
-    // are concatenated into "79本" rather than separated by a newline.
-    const lineMap = new Map<number, string>();
     for (const raw of content.items) {
       if (!('str' in raw)) continue;
       const item = raw as { str: string; transform: number[] };
       if (!item.str.trim()) continue;
-      const y = Math.round(item.transform[5] / 4) * 4; // bucket to 4px
-      lineMap.set(y, (lineMap.get(y) ?? '') + item.str);
+      result.push({ str: item.str, x: Math.round(item.transform[4]), y: Math.round(item.transform[5]) });
     }
-
-    // Sort descending by Y (PDF origin is bottom-left)
-    const lines = [...lineMap.entries()]
-      .sort((a, b) => b[0] - a[0])
-      .map(([, t]) => t);
-    fullText += lines.join('\n') + '\n';
   }
-  return fullText;
+  return result;
 }
 
-function parseText(text: string): PdfParseResult {
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+// X-column thresholds for the standard 木地部 PDF layout
+const COL = {
+  CODE_MAX: 75,        // 品番
+  CAT_MIN: 75, CAT_MAX: 110,   // カテゴリー
+  NAME_MIN: 110, NAME_MAX: 280, // 品名
+  COUNT_MIN: 280, COUNT_MAX: 380, // 本数
+  PRICE_MIN: 380, PRICE_MAX: 460, // 単価
+  AMT_MIN: 460,        // 金額
+} as const;
 
-  // Extract year and month from title like "令和7年　4月生産高"
-  let year: number | undefined;
-  let month: number | undefined;
-  const titleMatch = text.match(/令和(\d+)年[　\s]*(\d+)月/);
+function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: number): PdfParseResult {
+  // Group by Y coordinate with 10px tolerance
+  const rowMap = new Map<number, RawTextItem[]>();
+  for (const item of rawItems) {
+    const yBucket = Math.round(item.y / 10) * 10;
+    const row = rowMap.get(yBucket) ?? [];
+    row.push(item);
+    rowMap.set(yBucket, row);
+  }
+
+  // Sort rows top-to-bottom (PDF y-axis is inverted)
+  const rows = [...rowMap.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([, items]) => items.sort((a, b) => a.x - b.x));
+
+  // Extract title for year/month
+  let year = ctxYear;
+  let month = ctxMonth;
+  const fullText = rows.map(r => r.map(i => i.str).join('')).join('\n');
+  const titleMatch = fullText.match(/令和(\d+)年[　\s]*(\d+)月/);
   if (titleMatch) {
-    year = parseInt(titleMatch[1]);
-    month = parseInt(titleMatch[2]);
+    year = year ?? parseInt(titleMatch[1]);
+    month = month ?? parseInt(titleMatch[2]);
   }
 
-  // Parse items - lines starting with a 4-digit product code
-  const items: PdfItem[] = [];
-  const productLineRegex = /^(\d{4})\s+(.+)/;
+  // Extract items from rows
+  const items: KijiItem[] = [];
 
-  // Extract total count: scan ALL 本 occurrences, last one is the grand total.
-  // (pdfjs sometimes concatenates "1本79本" on one line when columns merge)
-  const allHonsuMatches = [...text.matchAll(/(\d+)本/g)];
-  const totalCount = allHonsuMatches.length > 0
-    ? parseInt(allHonsuMatches[allHonsuMatches.length - 1][1])
-    : 0;
+  for (const row of rows) {
+    const codeStr = row.filter(i => i.x < COL.CODE_MAX).map(i => i.str).join('');
+    const catStr = row.filter(i => i.x >= COL.CAT_MIN && i.x < COL.CAT_MAX).map(i => i.str).join('');
+    const nameStr = row.filter(i => i.x >= COL.NAME_MIN && i.x < COL.NAME_MAX).map(i => i.str).join('');
+    const countStr = row.filter(i => i.x >= COL.COUNT_MIN && i.x < COL.COUNT_MAX).map(i => i.str).join('');
+    const priceStr = row.filter(i => i.x >= COL.PRICE_MIN && i.x < COL.AMT_MIN).map(i => i.str).join('');
+    const amtStr = row.filter(i => i.x >= COL.AMT_MIN).map(i => i.str).join('');
 
-  const countValues: number[] = [];
-  const excludedFlags: boolean[] = [];
+    const identity = codeStr + catStr + nameStr;
+    if (!identity.trim()) continue;
+    // Skip title rows
+    if (/令和|生産高/.test(identity)) continue;
+    // Skip pure total rows (no code/cat/name but has count/amount)
+    if (!identity.trim() && (countStr || amtStr)) continue;
 
-  for (const line of lines) {
-    // Check if this is a count line like "20本" or "79本"
-    const countOnlyMatch = line.match(/^(\d+)本\s*$/);
-    if (countOnlyMatch) {
-      countValues.push(parseInt(countOnlyMatch[1]));
-      continue;
-    }
+    const excluded = countStr.includes('本数に含めない') || nameStr.includes('本数に含めない');
+    const countMatch = countStr.match(/^(\d+)/);
+    const count = countMatch ? parseInt(countMatch[1]) : 0;
+    const unitPrice = parseJpNum(priceStr);
+    const amount = parseJpNum(amtStr);
 
-    // Check for lines with 本数に含めない marker
-    if (line.includes('本数に含めない') || line.includes('＊本数に含めない')) {
-      const countMatch = line.match(/(\d+)本/);
-      if (countMatch) {
-        countValues.push(parseInt(countMatch[1]));
-        excludedFlags[countValues.length - 1] = true;
-      }
-      continue;
-    }
+    // Must be a product row: either has a 4-digit code or a meaningful name
+    if (!/^\d{4}$/.test(codeStr) && !catStr && !nameStr) continue;
 
-    // Check for product code lines
-    const productMatch = line.match(productLineRegex);
-    if (productMatch) {
-      const rest = productMatch[2];
-      // Extract numbers from the rest of the line
-      const numbers = rest.match(/[\d,]+/g) || [];
-      const parsedNums = numbers.map(n => parseInt(n.replace(/,/g, '')));
-
-      let unitPrice = 0;
-      let amount = 0;
-      if (parsedNums.length >= 2) {
-        unitPrice = parsedNums[parsedNums.length - 2];
-        amount = parsedNums[parsedNums.length - 1];
-      } else if (parsedNums.length === 1) {
-        amount = parsedNums[0];
-      }
-
-      // Extract name (remove trailing numbers)
-      const name = rest.replace(/[\d,\s]+$/, '').trim();
-
-      items.push({
-        code: productMatch[1],
-        name,
-        count: 0, // will be filled from count column
-        unitPrice,
-        amount,
-        excluded: false,
-      });
-    }
+    items.push({
+      year: year ?? 0,
+      month: month ?? 0,
+      code: codeStr,
+      category: catStr,
+      name: nameStr,
+      count,
+      unitPrice,
+      amount,
+      excluded,
+    });
   }
 
-  // Match count values to items (all except last map to items; last is total)
-  const itemCounts = countValues.slice(0, countValues.length - 1);
-  items.forEach((item, i) => {
-    if (i < itemCounts.length) {
-      item.count = itemCounts[i];
-      item.excluded = !!excludedFlags[i];
-    }
-  });
+  // Total count: last (\d+)本 in all text (grouped lines so "79" and "本" merge)
+  const groupedText = rows.map(r => r.map(i => i.str).join('')).join('\n');
+  const allCounts = [...groupedText.matchAll(/(\d+)本/g)];
+  const totalCount = allCounts.length > 0 ? parseInt(allCounts[allCounts.length - 1][1]) : 0;
 
-  // Total amount: scan every line for comma-formatted numbers >= 100,000.
-  // After line-grouping, "1,460,000" and "79本" share a line as "1,460,00079本",
-  // so we use a regex that correctly extracts "1,460,000" out of that string.
+  // Total amount: last comma-formatted number >= 100,000
   let totalAmount = 0;
-  for (const line of lines) {
-    const nums = [...line.matchAll(/\d{1,3}(?:,\d{3})+/g)];
-    for (const m of nums) {
+  for (const row of rows) {
+    const line = row.map(i => i.str).join('');
+    for (const m of line.matchAll(/\d{1,3}(?:,\d{3})+/g)) {
       const n = parseInt(m[0].replace(/,/g, ''));
       if (n >= 100000) totalAmount = n;
     }
   }
-
-  // Fallback: sum item amounts
-  if (totalAmount === 0 && items.length > 0) {
-    totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+  if (totalAmount === 0) {
+    totalAmount = items.filter(i => !i.excluded).reduce((s, i) => s + i.amount, 0);
   }
 
   return { year, month, totalCount, totalAmount, items };
+}
+
+function parseJpNum(s: string): number {
+  const m = s.match(/[\d,]+/);
+  if (!m) return 0;
+  return parseInt(m[0].replace(/,/g, '')) || 0;
 }

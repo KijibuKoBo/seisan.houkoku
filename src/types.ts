@@ -1,10 +1,25 @@
+export type Role = 'admin' | 'viewer';
+
+export interface User {
+  id: string;
+  passwordHash: string;
+  displayName: string;
+  role: Role;
+}
+
+export interface AuthSession {
+  userId: string;
+  displayName: string;
+  role: Role;
+}
+
 export interface SalesData {
-  otsuka: number;    // 大塚
-  takumi: number;    // 匠
-  butsudan: number;  // 仏壇
-  ippanten: number;  // 一般店
-  showroom: number;  // ショールーム
-  bukken: number;    // 物件
+  otsuka: number;
+  takumi: number;
+  butsudan: number;
+  ippanten: number;
+  showroom: number;
+  bukken: number;
 }
 
 export interface SectionData {
@@ -25,6 +40,19 @@ export type YearStore = {
     [month: number]: MonthData;
   };
 };
+
+// 木地部個別アイテム（PDFから抽出）
+export interface KijiItem {
+  year: number;
+  month: number;
+  code: string;
+  category: string;
+  name: string;
+  count: number;
+  unitPrice: number;
+  amount: number;
+  excluded: boolean;
+}
 
 export const emptySales = (): SalesData => ({
   otsuka: 0, takumi: 0, butsudan: 0,

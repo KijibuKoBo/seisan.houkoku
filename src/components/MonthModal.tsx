@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MonthData, emptyMonth, SalesData } from '../types';
+import { MonthData, emptyMonth, SalesData, KijiItem } from '../types';
 import { formatAmount, salesTotal } from '../utils/calc';
 import PdfUploader from './PdfUploader';
 import { PdfParseResult } from '../utils/pdfParser';
@@ -10,7 +10,7 @@ interface Props {
   initial: MonthData | null;
   prevMonth: MonthData | null;
   prevYearMonth: MonthData | null;
-  onSave: (data: MonthData) => void;
+  onSave: (data: MonthData, kijiItems: KijiItem[]) => void;
   onClose: () => void;
 }
 
@@ -29,6 +29,7 @@ function numInput(value: number, onChange: (n: number) => void) {
 export default function MonthModal({ year, month, initial, prevMonth, prevYearMonth, onSave, onClose }: Props) {
   const [data, setData] = useState<MonthData>(initial ?? emptyMonth(month));
   const [activeTab, setActiveTab] = useState<'sales' | 'kiji' | 'tosou' | 'matome'>('sales');
+  const [pendingKijiItems, setPendingKijiItems] = useState<KijiItem[]>([]);
 
   useEffect(() => {
     setData(initial ?? emptyMonth(month));
@@ -39,13 +40,9 @@ export default function MonthModal({ year, month, initial, prevMonth, prevYearMo
   };
 
   const handlePdfResult = (result: PdfParseResult) => {
-    setData(d => ({
-      ...d,
-      kiji: {
-        count: result.totalCount,
-        amount: result.totalAmount,
-      },
-    }));
+    setData(d => ({ ...d, kiji: { count: result.totalCount, amount: result.totalAmount } }));
+    const items = result.items.map(i => ({ ...i, year, month }));
+    setPendingKijiItems(items);
     setActiveTab('kiji');
   };
 
@@ -128,8 +125,8 @@ export default function MonthModal({ year, month, initial, prevMonth, prevYearMo
 
           {activeTab === 'kiji' && (
             <div className="entry-section">
-              <div className="section-hint">PDFをアップロードすると本数・金額が自動入力されます</div>
-              <PdfUploader onResult={handlePdfResult} />
+              <div className="section-hint">PDFをアップロードすると本数・金額が自動入力されます（品番・品名も分析ページに保存されます）</div>
+              <PdfUploader onResult={handlePdfResult} contextYear={year} contextMonth={month} />
               <table className="entry-table" style={{ marginTop: '1rem' }}>
                 <tbody>
                   <tr>
@@ -224,7 +221,7 @@ export default function MonthModal({ year, month, initial, prevMonth, prevYearMo
 
         <div className="modal-footer">
           <button className="btn-secondary" onClick={onClose}>キャンセル</button>
-          <button className="btn-primary" onClick={() => onSave(data)}>保存</button>
+          <button className="btn-primary" onClick={() => onSave(data, pendingKijiItems)}>保存</button>
         </div>
       </div>
     </div>
