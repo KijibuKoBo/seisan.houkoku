@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit(0); }
 if (isset($_GET['test'])) {
     try {
         $pdo = new PDO(
-            'mysql:host=localhost;dbname=spengats_seisankanni;charset=utf8mb4',
+            'mysql:host=localhost;dbname=spengats_seisankanri;charset=utf8mb4',
             'spengats_kanri',
             'Allmeida24',
             [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
@@ -38,7 +38,7 @@ if ($token !== 'mtsng_api_2024') {
 
 try {
     $pdo = new PDO(
-        'mysql:host=localhost;dbname=spengats_seisankanni;charset=utf8mb4',
+        'mysql:host=localhost;dbname=spengats_seisankanri;charset=utf8mb4',
         'spengats_kanri',
         'Allmeida24',
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]

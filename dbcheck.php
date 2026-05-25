@@ -2,7 +2,7 @@
 header('Content-Type: application/json; charset=utf-8');
 try {
     $pdo = new PDO(
-        'mysql:host=localhost;dbname=spengats_seisankanni;charset=utf8mb4',
+        'mysql:host=localhost;dbname=spengats_seisankanri;charset=utf8mb4',
         'spengats_kanri',
         'Allmeida24',
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
