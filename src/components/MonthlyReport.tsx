@@ -48,12 +48,16 @@ interface RowProps {
   fmt: (n: number) => string;
   indent?: boolean;
   bold?: boolean;
+  note?: string;
 }
 
-function Row({ label, py, cur, pm, fmt, indent, bold }: RowProps) {
+function Row({ label, py, cur, pm, fmt, indent, bold, note }: RowProps) {
   return (
     <tr className={bold ? 'total-row' : 'sub-row'}>
-      <td className={`col-dept${indent ? ' indent' : ''}`}>{label}</td>
+      <td className={`col-dept${indent ? ' indent' : ''}`}>
+        {label}
+        {note && <span className="row-note">（{note}）</span>}
+      </td>
       <td className="col-num">{fmt(py)}</td>
       <td className="col-num">{fmt(cur)}</td>
       <td className={`col-pct ${upDown(cur, py)}`}>{pct(cur, py)}</td>
@@ -132,7 +136,8 @@ export default function MonthlyReport({ store, defaultYear, onClose }: Props) {
                 const c  = cur?.sales[key]   ?? 0;
                 const pm = prevM?.sales[key] ?? 0;
                 const py = prevY?.sales[key] ?? 0;
-                return <Row key={key} label={label} py={py} cur={c} pm={pm} fmt={yen} indent />;
+                const note = key === 'bukken' ? (cur?.salesMemo?.bukken || undefined) : undefined;
+                return <Row key={key} label={label} py={py} cur={c} pm={pm} fmt={yen} indent note={note} />;
               })}
               <Row label="営業部　合計" py={stPrevY} cur={stCur} pm={stPrevM} fmt={yen} bold />
 
