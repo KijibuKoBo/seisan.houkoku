@@ -118,7 +118,7 @@ function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: num
     if (!identity.trim() && (countStr || amtStr)) continue;
 
     const excluded = countStr.includes('本数に含めない') || nameStr.includes('本数に含めない');
-    const countMatch = countStr.match(/^(\d+)/);
+    const countMatch = countStr.replace(/\s/g, '').match(/^(\d+)/);
     const count = countMatch ? parseInt(countMatch[1]) : 0;
     const unitPrice = parseJpNum(priceStr);
     const amount = parseJpNum(amtStr);
@@ -161,7 +161,8 @@ function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: num
 }
 
 function parseJpNum(s: string): number {
-  const m = s.match(/[\d,]+/);
+  // Remove spaces first — PDF splits spaced numbers into separate items
+  const m = s.replace(/\s/g, '').match(/[\d,]+/);
   if (!m) return 0;
   return parseInt(m[0].replace(/,/g, '')) || 0;
 }
