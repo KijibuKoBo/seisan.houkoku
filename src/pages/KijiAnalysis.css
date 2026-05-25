@@ -265,6 +265,80 @@
 .manage-del-btn:hover { background: #fee; }
 .manage-num-input.small { width: 55px; }
 
+/* 製品別タブ 編集モード */
+.product-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.prod-edit-btn {
+  padding: 5px 12px;
+  border: 1px solid #1a3a5c;
+  border-radius: 4px;
+  background: white;
+  color: #1a3a5c;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+}
+.prod-edit-btn:hover { background: #f0f5ff; }
+
+.prod-edit-save-btn {
+  padding: 5px 14px;
+  background: #2e7d32;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+}
+.prod-edit-save-btn:disabled { background: #aaa; cursor: default; }
+.prod-edit-save-btn:not(:disabled):hover { background: #388e3c; }
+
+.prod-edit-cancel-btn {
+  padding: 5px 12px;
+  background: white;
+  color: #666;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+}
+.prod-edit-cancel-btn:hover { background: #f5f5f5; }
+
+.prod-edit-hint {
+  font-size: 11px;
+  color: #777;
+  background: #fffbe6;
+  border: 1px solid #ffe082;
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin: 4px 0;
+}
+
+.prod-cat-select {
+  padding: 3px 5px;
+  border: 1px solid #1a3a5c;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.prod-name-input {
+  width: 100%;
+  padding: 3px 6px;
+  border: 1px solid #1a3a5c;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.kiji-table tr.prod-row-changed td {
+  background: #fff8e1;
+}
+
 .kiji-report-btn {
   padding: 7px 16px;
   background: white;

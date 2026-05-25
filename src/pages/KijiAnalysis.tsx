@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { KijiItem, YearStore } from '../types';
-import { loadAllKijiItems, getAvailableKijiYears, loadKijiItems, saveKijiItems, renameKijiItems } from '../utils/kijiStore';
+import { loadAllKijiItems, getAvailableKijiYears, loadKijiItems, saveKijiItems, renameKijiItems, renameKijiItemsByName } from '../utils/kijiStore';
 import { PRODUCT_LIST, CATEGORIES } from '../utils/productList';
 import KijiReport from '../components/KijiReport';
 import './KijiAnalysis.css';
@@ -35,13 +35,16 @@ function groupByProduct(items: KijiItem[]): ProductStat[] {
   const map = new Map<string, ProductStat>();
   for (const item of items) {
     if (item.excluded) continue;
-    const k = `${item.code}_${item.category}_${item.name}`;
+    // Key by category+name so same-name products always merge
+    const k = `${item.category}_${item.name}`;
     if (!map.has(k)) {
       map.set(k, { key: k, code: item.code, category: item.category, name: item.name, totalCount: 0, totalAmount: 0, months: [] });
     }
     const s = map.get(k)!;
     s.totalCount += item.count;
     s.totalAmount += item.amount;
+    // Clear code if multiple lot numbers exist for this product
+    if (s.code !== item.code) s.code = '';
     s.months.push({ year: item.year, month: item.month, count: item.count, amount: item.amount });
   }
   return [...map.values()].sort((a, b) => b.totalCount - a.totalCount);
@@ -210,6 +213,23 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
   const refreshItems = () => setAllItems(loadAllKijiItems());
   const availableYears = useMemo(() => getAvailableKijiYears(), []);
 
+  // 製品別タブの編集モード
+  const [productEditMode, setProductEditMode] = useState(false);
+  const [productEdits, setProductEdits] = useState<Record<string, { category: string; name: string }>>({});
+
+  const handleProductEditSave = () => {
+    for (const [key, edit] of Object.entries(productEdits)) {
+      const product = products.find(p => p.key === key);
+      if (!product) continue;
+      if (product.category !== edit.category || product.name !== edit.name) {
+        renameKijiItemsByName(product.category, product.name, edit.category, edit.name);
+      }
+    }
+    setProductEdits({});
+    setProductEditMode(false);
+    refreshItems();
+  };
+
   const currentReiwa = new Date().getFullYear() - 2018;
   const effectiveYears = selectedYears.length > 0
     ? selectedYears
@@ -347,30 +367,95 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
         {tab === 'product' && allItems.length > 0 && (
           <div className="kiji-section">
             {selectedProduct ? (
-              <ProductDetail product={selectedProduct} onBack={() => setSelectedProduct(null)} allItems={allItems} availableYears={availableYears} />
+              <ProductDetail product={selectedProduct} onBack={() => { setSelectedProduct(null); setProductEditMode(false); setProductEdits({}); }} allItems={allItems} availableYears={availableYears} />
             ) : (
               <>
-                <h3 className="section-title">全製品一覧（クリックで詳細）</h3>
-                <table className="kiji-table">
+                <div className="product-list-header">
+                  <h3 className="section-title" style={{ margin: 0 }}>
+                    全製品一覧
+                    {!productEditMode && <span className="title-sub">（クリックで詳細）</span>}
+                  </h3>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {productEditMode ? (
+                      <>
+                        <button className="prod-edit-save-btn" onClick={handleProductEditSave}
+                          disabled={Object.keys(productEdits).length === 0}>
+                          ✓ 変更を保存
+                        </button>
+                        <button className="prod-edit-cancel-btn" onClick={() => { setProductEditMode(false); setProductEdits({}); }}>
+                          キャンセル
+                        </button>
+                      </>
+                    ) : (
+                      canEdit && (
+                        <button className="prod-edit-btn" onClick={() => setProductEditMode(true)}>
+                          ✏️ カテゴリー・品名を編集
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+                {productEditMode && (
+                  <p className="prod-edit-hint">
+                    カテゴリーや品名を変更して「変更を保存」を押すと、全月のデータが一括更新されます。同じカテゴリー＋品名になったものは統合されます。
+                  </p>
+                )}
+                <table className="kiji-table" style={{ marginTop: 8 }}>
                   <thead>
                     <tr>
-                      <th>品番</th><th>カテゴリー</th><th>品名</th>
+                      <th>カテゴリー</th><th>品名</th>
                       <th>総本数</th><th>総金額</th><th>平均単価</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map(p => (
-                      <tr key={p.key} className="clickable" onClick={() => setSelectedProduct(p)}>
-                        <td>{p.code}</td>
-                        <td><span className="cat-badge">{p.category || '—'}</span></td>
-                        <td>{p.name}</td>
-                        <td className="num">{p.totalCount.toLocaleString()}本</td>
-                        <td className="num">¥{p.totalAmount.toLocaleString()}</td>
-                        <td className="num">
-                          {p.totalCount > 0 ? `¥${Math.round(p.totalAmount / p.totalCount).toLocaleString()}` : '—'}
-                        </td>
-                      </tr>
-                    ))}
+                    {products.map(p => {
+                      const edit = productEdits[p.key];
+                      const curCat  = edit?.category ?? p.category;
+                      const curName = edit?.name     ?? p.name;
+                      const changed = edit && (edit.category !== p.category || edit.name !== p.name);
+                      return (
+                        <tr
+                          key={p.key}
+                          className={productEditMode ? (changed ? 'prod-row-changed' : '') : 'clickable'}
+                          onClick={!productEditMode ? () => setSelectedProduct(p) : undefined}
+                        >
+                          <td onClick={e => productEditMode && e.stopPropagation()}>
+                            {productEditMode ? (
+                              <select
+                                className="prod-cat-select"
+                                value={curCat}
+                                onChange={e => setProductEdits(prev => ({
+                                  ...prev,
+                                  [p.key]: { category: e.target.value, name: curName },
+                                }))}
+                              >
+                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                <option value={p.category}>{p.category}</option>
+                              </select>
+                            ) : (
+                              <span className="cat-badge">{p.category || '—'}</span>
+                            )}
+                          </td>
+                          <td onClick={e => productEditMode && e.stopPropagation()}>
+                            {productEditMode ? (
+                              <input
+                                className="prod-name-input"
+                                value={curName}
+                                onChange={e => setProductEdits(prev => ({
+                                  ...prev,
+                                  [p.key]: { category: curCat, name: e.target.value },
+                                }))}
+                              />
+                            ) : p.name}
+                          </td>
+                          <td className="num">{p.totalCount.toLocaleString()}本</td>
+                          <td className="num">¥{p.totalAmount.toLocaleString()}</td>
+                          <td className="num">
+                            {p.totalCount > 0 ? `¥${Math.round(p.totalAmount / p.totalCount).toLocaleString()}` : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </>
@@ -537,7 +622,7 @@ function ProductDetail({ product, onBack, allItems, availableYears }:
   { product: ProductStat; onBack: () => void; allItems: KijiItem[]; availableYears: number[] }) {
 
   const productItems = allItems.filter(
-    i => i.code === product.code && i.name === product.name && !i.excluded
+    i => i.category === product.category && i.name === product.name && !i.excluded
   );
 
   // Monthly data for each year

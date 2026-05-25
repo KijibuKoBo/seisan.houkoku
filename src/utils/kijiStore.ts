@@ -48,7 +48,7 @@ export function getAvailableKijiYears(): number[] {
   return [...years].sort((a, b) => b - a);
 }
 
-// Rename category/name across ALL months in kijiStore
+// Rename by exact code+category+name (used from ManageTab)
 export function renameKijiItems(
   oldCode: string, oldCategory: string, oldName: string,
   newCategory: string, newName: string
@@ -57,6 +57,22 @@ export function renameKijiItems(
   for (const ym of Object.keys(data)) {
     data[ym] = data[ym].map(item =>
       item.code === oldCode && item.category === oldCategory && item.name === oldName
+        ? { ...item, category: newCategory, name: newName }
+        : item
+    );
+  }
+  save(data);
+}
+
+// Rename by category+name across ALL months (ignores lot number — merges all)
+export function renameKijiItemsByName(
+  oldCategory: string, oldName: string,
+  newCategory: string, newName: string
+): void {
+  const data = load();
+  for (const ym of Object.keys(data)) {
+    data[ym] = data[ym].map(item =>
+      item.category === oldCategory && item.name === oldName
         ? { ...item, category: newCategory, name: newName }
         : item
     );
