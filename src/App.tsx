@@ -3,7 +3,7 @@ import { YearStore, MonthData, AuthSession, KijiItem } from './types';
 import { loadStore, saveStore, setMonthData } from './utils/store';
 import { initDefaultUsers, getSession, logout } from './utils/auth';
 import { saveKijiItems } from './utils/kijiStore';
-import { syncFromServer } from './utils/api';
+import { syncFromServer, forcePushToServer } from './utils/api';
 import YearlyTable, { CompactSummary } from './components/YearlyTable';
 import MonthModal from './components/MonthModal';
 import LoginPage from './components/LoginPage';
@@ -28,6 +28,7 @@ export default function App() {
   const [page, setPage] = useState<Page>('report');
   const [syncing, setSyncing] = useState(true);
   const [showMonthlyReport, setShowMonthlyReport] = useState(false);
+  const [pushStatus, setPushStatus] = useState<'idle' | 'pushing' | 'ok' | 'err'>('idle');
 
   useEffect(() => {
     initDefaultUsers();
@@ -117,6 +118,18 @@ export default function App() {
             {session.displayName}
             {session.role === 'admin' && <span className="role-badge">管理者</span>}
           </span>
+          <button
+            className="sync-btn"
+            disabled={pushStatus === 'pushing'}
+            onClick={async () => {
+              setPushStatus('pushing');
+              const ok = await forcePushToServer();
+              setPushStatus(ok ? 'ok' : 'err');
+              setTimeout(() => setPushStatus('idle'), 3000);
+            }}
+          >
+            {pushStatus === 'pushing' ? '送信中...' : pushStatus === 'ok' ? '✓ 同期完了' : pushStatus === 'err' ? '✗ 失敗' : '🔄 サーバーへ同期'}
+          </button>
           <button className="logout-btn" onClick={handleLogout}>ログアウト</button>
         </div>
       </header>

@@ -30,3 +30,22 @@ export async function syncFromServer(): Promise<void> {
     }
   } catch { /* API unreachable — fall back to localStorage silently */ }
 }
+
+// Force-upload all local data to server; returns true on success
+export async function forcePushToServer(): Promise<boolean> {
+  try {
+    for (const key of SYNC_KEYS) {
+      const local = localStorage.getItem(key);
+      if (!local) continue;
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Token': TOKEN },
+        body: JSON.stringify({ key, value: local }),
+      });
+      if (!res.ok) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
