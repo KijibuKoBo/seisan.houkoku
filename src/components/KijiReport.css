@@ -1,0 +1,138 @@
+.kiji-report-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.kiji-report-modal {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+  width: 100%;
+  max-width: 780px;
+}
+
+/* Controls bar */
+.kiji-report-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.kiji-report-title-ctrl {
+  font-size: 14px;
+  font-weight: bold;
+  color: #1a3a5c;
+}
+
+.kiji-report-actions { display: flex; gap: 8px; }
+
+/* Print area */
+.kiji-print-area {
+  padding: 28px 32px;
+  font-family: 'Meiryo', 'MS PGothic', 'Yu Gothic', sans-serif;
+}
+
+.kiji-report-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.kiji-report-header h2 {
+  font-size: 18px;
+  margin: 0 0 4px;
+  color: #1a3a5c;
+  letter-spacing: 1px;
+}
+
+.kiji-report-header p {
+  font-size: 14px;
+  color: #555;
+  margin: 0;
+}
+
+/* Table */
+.kiji-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.kiji-report-table th,
+.kiji-report-table td {
+  border: 1px solid #aaa;
+  padding: 5px 8px;
+}
+
+.kiji-report-table thead th {
+  background: #1a3a5c;
+  color: white;
+  text-align: center;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.kr-code   { width: 60px;  text-align: center; }
+.kr-cat    { width: 80px;  text-align: center; }
+.kr-name   { text-align: left; }
+.kr-count  { width: 70px;  text-align: right; }
+.kr-price  { width: 100px; text-align: right; }
+.kr-amount { width: 110px; text-align: right; }
+
+/* Category subtotal rows */
+.kiji-report-table tr.kr-cat-total td {
+  background: #f0f4f8;
+  font-weight: bold;
+  font-size: 12px;
+  border-top: 1px solid #aaa;
+}
+
+/* Total row */
+.kiji-report-table tfoot tr.kr-total td {
+  background: #dce8f5;
+  font-weight: bold;
+  font-size: 13px;
+  border-top: 2px solid #1a3a5c;
+}
+
+.kiji-report-footer {
+  text-align: right;
+  font-size: 11px;
+  color: #999;
+  margin-top: 16px;
+}
+
+/* Print */
+@media print {
+  .no-print { display: none !important; }
+
+  .kiji-report-overlay {
+    position: static;
+    background: none;
+    padding: 0;
+    display: block;
+  }
+
+  .kiji-report-modal {
+    box-shadow: none;
+    border-radius: 0;
+    max-width: none;
+  }
+
+  .kiji-print-area { padding: 10px 14px; }
+
+  .kiji-report-table { font-size: 11px; }
+  .kiji-report-table th,
+  .kiji-report-table td { padding: 3px 6px; }
+  .kiji-report-header h2 { font-size: 15px; }
+}

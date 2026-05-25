@@ -264,3 +264,15 @@
 }
 .manage-del-btn:hover { background: #fee; }
 .manage-num-input.small { width: 55px; }
+
+.kiji-report-btn {
+  padding: 7px 16px;
+  background: white;
+  color: #1a3a5c;
+  border: 1px solid #1a3a5c;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+}
+.kiji-report-btn:hover { background: #f0f5ff; }

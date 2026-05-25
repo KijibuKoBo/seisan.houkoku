@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { KijiItem, YearStore } from '../types';
 import { loadAllKijiItems, getAvailableKijiYears, loadKijiItems, saveKijiItems, renameKijiItems } from '../utils/kijiStore';
 import { PRODUCT_LIST, CATEGORIES } from '../utils/productList';
+import KijiReport from '../components/KijiReport';
 import './KijiAnalysis.css';
 
 // ─── aggregate helpers ───────────────────────────────────────────────────────
@@ -679,6 +680,7 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
   const [totalCount, setTotalCount] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   // New item entry state
   const [newCategory, setNewCategory] = useState<string>(CATEGORIES[0]);
@@ -910,12 +912,24 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
           ) : <strong>{totalAmount.toLocaleString()}</strong>}
           <span>円</span>
         </div>
+        <button className="kiji-report-btn" onClick={() => setShowReport(true)}>
+          📄 木地部月次報告
+        </button>
         {canEdit && (
           <button className="manage-save-btn" onClick={handleSave}>
             {saved ? '✓ 保存しました' : '月次データに反映'}
           </button>
         )}
       </div>
+
+      {showReport && (
+        <KijiReport
+          year={selYear}
+          month={selMonth}
+          items={items}
+          onClose={() => setShowReport(false)}
+        />
+      )}
     </div>
   );
 }
