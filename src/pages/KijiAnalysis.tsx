@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { KijiItem, YearStore } from '../types';
 import { loadAllKijiItems, getAvailableKijiYears, loadKijiItems, saveKijiItems, renameKijiItems } from '../utils/kijiStore';
+import { PRODUCT_LIST, CATEGORIES } from '../utils/productList';
 import './KijiAnalysis.css';
 
 // ─── aggregate helpers ───────────────────────────────────────────────────────
@@ -231,16 +232,6 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
     );
   };
 
-  if (allItems.length === 0) {
-    return (
-      <div className="kiji-empty">
-        <div className="kiji-empty-icon">📄</div>
-        <p>木地部のPDFデータがまだありません。</p>
-        <p>月次入力画面で木地部タブからPDFをアップロードしてください。</p>
-      </div>
-    );
-  }
-
   return (
     <div className="kiji-analysis">
       {/* Year filter */}
@@ -276,8 +267,17 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
 
       <div className="kiji-content">
 
+        {/* empty state for analysis tabs */}
+        {allItems.length === 0 && tab !== 'manage' && (
+          <div className="kiji-empty">
+            <div className="kiji-empty-icon">📄</div>
+            <p>木地部のPDFデータがまだありません。</p>
+            <p>月次入力画面でPDFをアップロードするか、「品目管理」タブから手動入力できます。</p>
+          </div>
+        )}
+
         {/* ── ランキング ── */}
-        {tab === 'ranking' && (
+        {tab === 'ranking' && allItems.length > 0 && (
           <div className="kiji-section">
             <div className="rank-toggle">
               <button className={rankBy === 'count' ? 'active' : ''} onClick={() => setRankBy('count')}>本数順</button>
@@ -343,7 +343,7 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
         )}
 
         {/* ── 製品別 ── */}
-        {tab === 'product' && (
+        {tab === 'product' && allItems.length > 0 && (
           <div className="kiji-section">
             {selectedProduct ? (
               <ProductDetail product={selectedProduct} onBack={() => setSelectedProduct(null)} allItems={allItems} availableYears={availableYears} />
@@ -378,7 +378,7 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
         )}
 
         {/* ── カテゴリー別 ── */}
-        {tab === 'category' && (
+        {tab === 'category' && allItems.length > 0 && (
           <div className="kiji-section">
             {selectedCategory ? (
               <CategoryDetail category={selectedCategory} onBack={() => setSelectedCategory(null)} />
@@ -421,7 +421,7 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
         )}
 
         {/* ── 月別トレンド ── */}
-        {tab === 'monthly' && (
+        {tab === 'monthly' && allItems.length > 0 && (
           <div className="kiji-section">
             <h3 className="section-title">月別生産推移</h3>
             {effectiveYears.map(y => {
@@ -460,7 +460,7 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
         )}
 
         {/* ── 年別比較 ── */}
-        {tab === 'yearly' && (
+        {tab === 'yearly' && allItems.length > 0 && (
           <div className="kiji-section">
             <h3 className="section-title">年別比較</h3>
             {(() => {
@@ -670,30 +670,94 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
   onRefresh: () => void;
 }) {
   const currentReiwa = new Date().getFullYear() - 2018;
-  const [selYear, setSelYear] = useState(availableYears[0] ?? currentReiwa);
-  const [selMonth, setSelMonth] = useState(1);
+  const yearOptions = [...new Set([...availableYears, currentReiwa, currentReiwa - 1])].sort((a, b) => b - a);
+
+  const [selYear, setSelYear] = useState(yearOptions[0] ?? currentReiwa);
+  const [selMonth, setSelMonth] = useState(new Date().getMonth() + 1);
   const [items, setItems] = useState<KijiItem[]>([]);
   const [origItems, setOrigItems] = useState<KijiItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
   const [saved, setSaved] = useState(false);
 
+  // New item entry state
+  const [newCategory, setNewCategory] = useState(CATEGORIES[0] ?? 'Ca');
+  const [newProductName, setNewProductName] = useState('');
+  const [newCount, setNewCount] = useState(1);
+  const [newAmount, setNewAmount] = useState(0);
+  const [newUnitPrice, setNewUnitPrice] = useState(0);
+  const [amountManual, setAmountManual] = useState(false);
+
+  const filteredProducts = PRODUCT_LIST.filter(p => p.category === newCategory);
+
   useEffect(() => {
     const loaded = loadKijiItems(selYear, selMonth);
     setItems(loaded);
     setOrigItems(loaded);
     const md = store[selYear]?.[selMonth];
-    setTotalCount(md?.kiji.count ?? loaded.filter(i => !i.excluded).reduce((s, i) => s + i.count, 0));
-    setTotalAmount(md?.kiji.amount ?? loaded.filter(i => !i.excluded).reduce((s, i) => s + i.amount, 0));
+    const active = loaded.filter(i => !i.excluded);
+    setTotalCount(md?.kiji.count ?? active.reduce((s, i) => s + i.count, 0));
+    setTotalAmount(md?.kiji.amount ?? active.reduce((s, i) => s + i.amount, 0));
     setSaved(false);
   }, [selYear, selMonth]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const updateItem = (idx: number, field: 'category' | 'name', value: string) => {
-    setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+  const recomputeTotals = (updated: KijiItem[]) => {
+    const active = updated.filter(i => !i.excluded);
+    setTotalCount(active.reduce((s, i) => s + i.count, 0));
+    setTotalAmount(active.reduce((s, i) => s + i.amount, 0));
+  };
+
+  const updateItem = (idx: number, field: 'category' | 'name' | 'count' | 'amount', value: string | number) => {
+    setItems(prev => {
+      const next = prev.map((item, i) => i === idx ? { ...item, [field]: value } : item);
+      if (field === 'count' || field === 'amount') recomputeTotals(next);
+      return next;
+    });
+  };
+
+  const handleProductSelect = (name: string) => {
+    setNewProductName(name);
+    const product = filteredProducts.find(p => p.name === name);
+    if (product) {
+      setNewUnitPrice(product.unitPrice);
+      if (!amountManual) setNewAmount(product.unitPrice * newCount);
+    } else {
+      setNewUnitPrice(0);
+    }
+  };
+
+  const handleNewCountChange = (count: number) => {
+    setNewCount(count);
+    if (!amountManual) setNewAmount(newUnitPrice * count);
+  };
+
+  const handleAddItem = () => {
+    if (!newProductName || newCount <= 0) return;
+    const newItem: KijiItem = {
+      year: selYear, month: selMonth, code: '',
+      category: newCategory, name: newProductName,
+      count: newCount, unitPrice: newUnitPrice, amount: newAmount, excluded: false,
+    };
+    const updated = [...items, newItem];
+    setItems(updated);
+    recomputeTotals(updated);
+    setNewProductName('');
+    setNewCount(1);
+    setNewAmount(0);
+    setAmountManual(false);
+    setSaved(false);
+  };
+
+  const removeItem = (idx: number) => {
+    setItems(prev => {
+      const updated = prev.filter((_, i) => i !== idx);
+      recomputeTotals(updated);
+      return updated;
+    });
+    setSaved(false);
   };
 
   const handleSave = () => {
-    // Apply renames across ALL months for any changed category/name
     for (let i = 0; i < origItems.length; i++) {
       const orig = origItems[i];
       const curr = items[i];
@@ -702,7 +766,6 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
         renameKijiItems(orig.code, orig.category, orig.name, curr.category, curr.name);
       }
     }
-    // Save this month's full item list (counts, amounts, etc.)
     saveKijiItems(selYear, selMonth, items);
     onSaveMonthKiji(selYear, selMonth, totalCount, totalAmount);
     setOrigItems(items);
@@ -714,27 +777,83 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
     <div className="kiji-section">
       <div className="manage-selectors">
         <label>年：</label>
-        <select value={selYear} onChange={e => setSelYear(Number(e.target.value))}>
-          {availableYears.map(y => <option key={y} value={y}>令和{y}年</option>)}
+        <select value={selYear} onChange={e => { setSelYear(Number(e.target.value)); setSaved(false); }}>
+          {yearOptions.map(y => <option key={y} value={y}>令和{y}年</option>)}
         </select>
         <label>月：</label>
-        <select value={selMonth} onChange={e => setSelMonth(Number(e.target.value))}>
+        <select value={selMonth} onChange={e => { setSelMonth(Number(e.target.value)); setSaved(false); }}>
           {Array.from({length:12},(_,i)=>i+1).map(m => <option key={m} value={m}>{m}月</option>)}
         </select>
       </div>
 
+      {/* Product entry form */}
+      {canEdit && (
+        <div className="manage-add-form">
+          <div className="manage-add-title">品目を追加</div>
+          <div className="manage-add-row">
+            <label>カテゴリー：</label>
+            <select
+              value={newCategory}
+              onChange={e => {
+                setNewCategory(e.target.value);
+                setNewProductName(''); setNewUnitPrice(0); setNewAmount(0); setAmountManual(false);
+              }}
+            >
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              <option value="その他">その他</option>
+            </select>
+
+            <label>品名：</label>
+            <select
+              value={filteredProducts.some(p => p.name === newProductName) ? newProductName : ''}
+              onChange={e => handleProductSelect(e.target.value)}
+            >
+              <option value="">-- 選択 --</option>
+              {filteredProducts.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+            </select>
+
+            <input
+              className="manage-input name-input"
+              placeholder="または直接入力"
+              value={newProductName}
+              onChange={e => {
+                setNewProductName(e.target.value);
+                if (!filteredProducts.some(p => p.name === e.target.value)) { setNewUnitPrice(0); }
+              }}
+            />
+          </div>
+          <div className="manage-add-row">
+            <label>本数：</label>
+            <input
+              type="number" className="manage-num-input small" value={newCount} min={1}
+              onChange={e => handleNewCountChange(Number(e.target.value))}
+            />
+            <span>本</span>
+            <span className="manage-price-hint">単価：¥{newUnitPrice.toLocaleString()}</span>
+            <label>金額：</label>
+            <input
+              type="number" className="manage-num-input wide" value={newAmount} min={0}
+              onChange={e => { setNewAmount(Number(e.target.value)); setAmountManual(true); }}
+            />
+            <span>円</span>
+            <button
+              className="manage-add-btn"
+              onClick={handleAddItem}
+              disabled={!newProductName || newCount <= 0}
+            >＋ 追加</button>
+          </div>
+        </div>
+      )}
+
       {items.length === 0 ? (
-        <p style={{color:'#999',margin:'24px 0'}}>この月のPDFデータがありません</p>
+        <p style={{color:'#999',margin:'24px 0'}}>この月のデータがありません</p>
       ) : (
         <table className="kiji-table manage-table">
           <thead>
             <tr>
-              <th>品番</th>
-              <th>カテゴリー</th>
-              <th>品名</th>
-              <th>本数</th>
-              <th>金額</th>
-              <th>除外</th>
+              <th>品番</th><th>カテゴリー</th><th>品名</th>
+              <th>本数</th><th>金額</th><th>除外</th>
+              {canEdit && <th></th>}
             </tr>
           </thead>
           <tbody>
@@ -743,25 +862,34 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
                 <td>{item.code}</td>
                 <td>
                   {canEdit ? (
-                    <input
-                      className="manage-input"
-                      value={item.category}
-                      onChange={e => updateItem(idx, 'category', e.target.value)}
-                    />
+                    <input className="manage-input" value={item.category}
+                      onChange={e => updateItem(idx, 'category', e.target.value)} />
                   ) : item.category}
                 </td>
                 <td>
                   {canEdit ? (
-                    <input
-                      className="manage-input name-input"
-                      value={item.name}
-                      onChange={e => updateItem(idx, 'name', e.target.value)}
-                    />
+                    <input className="manage-input name-input" value={item.name}
+                      onChange={e => updateItem(idx, 'name', e.target.value)} />
                   ) : item.name}
                 </td>
-                <td className="num">{item.count}本</td>
-                <td className="num">{item.amount > 0 ? `¥${item.amount.toLocaleString()}` : '—'}</td>
+                <td className="num">
+                  {canEdit ? (
+                    <input type="number" className="manage-num-input small" value={item.count} min={0}
+                      onChange={e => updateItem(idx, 'count', Number(e.target.value))} />
+                  ) : `${item.count}本`}
+                </td>
+                <td className="num">
+                  {canEdit ? (
+                    <input type="number" className="manage-num-input" value={item.amount} min={0}
+                      onChange={e => updateItem(idx, 'amount', Number(e.target.value))} />
+                  ) : (item.amount > 0 ? `¥${item.amount.toLocaleString()}` : '—')}
+                </td>
                 <td className="num">{item.excluded ? '✓' : ''}</td>
+                {canEdit && (
+                  <td>
+                    <button className="manage-del-btn" onClick={() => removeItem(idx)} title="削除">✕</button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -772,22 +900,14 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
         <div className="manage-total-row">
           <span className="manage-total-label">木地部 月次合計　本数：</span>
           {canEdit ? (
-            <input
-              type="number"
-              className="manage-num-input"
-              value={totalCount}
-              onChange={e => setTotalCount(Number(e.target.value))}
-            />
+            <input type="number" className="manage-num-input" value={totalCount}
+              onChange={e => setTotalCount(Number(e.target.value))} />
           ) : <strong>{totalCount}</strong>}
           <span>本</span>
           <span className="manage-total-label" style={{marginLeft:24}}>金額：</span>
           {canEdit ? (
-            <input
-              type="number"
-              className="manage-num-input wide"
-              value={totalAmount}
-              onChange={e => setTotalAmount(Number(e.target.value))}
-            />
+            <input type="number" className="manage-num-input wide" value={totalAmount}
+              onChange={e => setTotalAmount(Number(e.target.value))} />
           ) : <strong>{totalAmount.toLocaleString()}</strong>}
           <span>円</span>
         </div>

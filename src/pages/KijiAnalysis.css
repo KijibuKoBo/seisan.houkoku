@@ -204,3 +204,63 @@
   margin-left: auto;
 }
 .manage-save-btn:hover { background: #2a5a8c; }
+
+/* Product entry form */
+.manage-add-form {
+  border: 1px solid #b8d0e8;
+  border-radius: 6px;
+  background: #f0f6fc;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+.manage-add-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #1a3a5c;
+  margin-bottom: 10px;
+}
+.manage-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.manage-add-row:last-child { margin-bottom: 0; }
+.manage-add-row label { font-size: 12px; color: #555; white-space: nowrap; }
+.manage-add-row select {
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+}
+.manage-price-hint {
+  font-size: 12px;
+  color: #777;
+  margin: 0 8px;
+}
+.manage-add-btn {
+  padding: 5px 14px;
+  background: #2e7d32;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  margin-left: 4px;
+}
+.manage-add-btn:hover:not(:disabled) { background: #388e3c; }
+.manage-add-btn:disabled { background: #aaa; cursor: default; }
+.manage-del-btn {
+  padding: 2px 6px;
+  background: #f5f5f5;
+  color: #c00;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.manage-del-btn:hover { background: #fee; }
+.manage-num-input.small { width: 55px; }

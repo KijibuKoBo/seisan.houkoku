@@ -9,6 +9,7 @@ import MonthModal from './components/MonthModal';
 import LoginPage from './components/LoginPage';
 import UserManager from './components/UserManager';
 import KijiAnalysis from './pages/KijiAnalysis';
+import MonthlyReport from './components/MonthlyReport';
 import './App.css';
 
 const currentReiwa = new Date().getFullYear() - 2018;
@@ -26,6 +27,7 @@ export default function App() {
   const [editingMonth, setEditingMonth] = useState<number | null>(null);
   const [page, setPage] = useState<Page>('report');
   const [syncing, setSyncing] = useState(true);
+  const [showMonthlyReport, setShowMonthlyReport] = useState(false);
 
   useEffect(() => {
     initDefaultUsers();
@@ -137,6 +139,11 @@ export default function App() {
                 onClick={() => setSelectedYear(Math.min(...availableYears) - 1)}
                 title="過去年を追加"
               >＋</button>
+              <button
+                className="monthly-report-btn"
+                onClick={() => setShowMonthlyReport(true)}
+                style={{ marginLeft: 'auto' }}
+              >📋 月次報告書</button>
             </div>
             <CompactSummary year={selectedYear} store={store} />
             <YearlyTable
@@ -152,6 +159,14 @@ export default function App() {
 
         {page === 'users' && canEdit && <UserManager />}
       </main>
+
+      {showMonthlyReport && (
+        <MonthlyReport
+          store={store}
+          defaultYear={selectedYear}
+          onClose={() => setShowMonthlyReport(false)}
+        />
+      )}
 
       {editingMonth !== null && canEdit && (
         <MonthModal
