@@ -142,7 +142,7 @@ function genPoints(cur: MonthData | null, prevY: MonthData | null): string[] {
     p: calcPct(cur.sales[ch.key] ?? 0, prevY?.sales[ch.key] ?? 0),
   })).filter(c => c.cur > 0 && c.p !== null).sort((a, b) => (b.p ?? 0) - (a.p ?? 0));
 
-  if (ranked[0]?.p !== null) {
+  if (ranked.length > 0 && ranked[0].p !== null) {
     const best = ranked[0];
     pts.push(best.p! >= 110
       ? `${best.label}部門が前年同月比${best.p}%と大きく伸長し、全体の売上を牽引しています。`
