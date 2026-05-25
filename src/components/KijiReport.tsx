@@ -152,7 +152,11 @@ export default function KijiReport({ year, month, items, onClose }: Props) {
           <div className="kr-header-right">
             <div className="kr-header-date">作成日：{today}</div>
             <div className="kr-header-btns no-print">
-              <button className="kr-print-btn" onClick={() => window.print()}>🖨 印刷</button>
+              <button className="kr-print-btn" onClick={() => {
+                document.body.classList.add('kr-printing');
+                window.addEventListener('afterprint', () => document.body.classList.remove('kr-printing'), { once: true });
+                window.print();
+              }}>🖨 印刷</button>
               <button className="kr-close-btn" onClick={onClose}>✕ 閉じる</button>
             </div>
           </div>

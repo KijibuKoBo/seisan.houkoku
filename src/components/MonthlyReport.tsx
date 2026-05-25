@@ -226,7 +226,11 @@ export default function MonthlyReport({ store, defaultYear, onClose }: Props) {
                 {Array.from({length:12},(_,i)=>i+1).map(m =>
                   <option key={m} value={m}>{m}月</option>)}
               </select>
-              <button className="mr-print-btn" onClick={() => window.print()}>🖨 印刷する</button>
+              <button className="mr-print-btn" onClick={() => {
+                document.body.classList.add('mr-printing');
+                window.addEventListener('afterprint', () => document.body.classList.remove('mr-printing'), { once: true });
+                window.print();
+              }}>🖨 印刷する</button>
               <button className="mr-close-btn" onClick={onClose}>✕</button>
             </div>
           </div>
