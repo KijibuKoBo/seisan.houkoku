@@ -9,6 +9,7 @@ interface Props {
   store: YearStore;
   onEditMonth: (month: number) => void;
   readOnly?: boolean;
+  onPrint?: () => void;
 }
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -43,11 +44,14 @@ function CellValue({ value, isCount }: { value: number; isCount?: boolean }) {
   return <>{formatAmount(value)}</>;
 }
 
-export default function YearlyTable({ year, store, onEditMonth, readOnly }: Props) {
+export default function YearlyTable({ year, store, onEditMonth, readOnly, onPrint: _onPrint }: Props) {
   const months = store[year] ?? {};
 
   return (
     <div className="table-wrapper">
+      <div className="table-header-actions">
+        <button className="print-btn" onClick={() => window.print()}>🖨️ 印刷</button>
+      </div>
       <table className="yearly-table">
         <thead>
           <tr>

@@ -35,6 +35,20 @@ export default function App() {
 
   const handleLogout = () => { logout(); setSession(null); };
 
+  const handleKijiMonthSave = useCallback((year: number, month: number, count: number, amount: number) => {
+    const existing: MonthData = store[year]?.[month] ?? {
+      month,
+      sales: { otsuka: 0, takumi: 0, butsudan: 0, ippanten: 0, showroom: 0, bukken: 0 },
+      kiji: { count: 0, amount: 0 },
+      tosou: { count: 0, amount: 0 },
+      matome: { count: 0, amount: 0 },
+    };
+    const updated = { ...existing, kiji: { count, amount } };
+    const next = setMonthData(store, year, month, updated);
+    setStore(next);
+    saveStore(next);
+  }, [store]);
+
   const handleSave = useCallback((data: MonthData, kijiItems: KijiItem[]) => {
     if (editingMonth === null) return;
     const next = setMonthData(store, selectedYear, editingMonth, data);
@@ -115,7 +129,7 @@ export default function App() {
           </>
         )}
 
-        {page === 'kiji' && <KijiAnalysis />}
+        {page === 'kiji' && <KijiAnalysis store={store} onSaveMonthKiji={handleKijiMonthSave} canEdit={canEdit} />}
 
         {page === 'users' && canEdit && <UserManager />}
       </main>

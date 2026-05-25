@@ -44,3 +44,19 @@ export function getAvailableKijiYears(): number[] {
   const years = new Set(Object.keys(data).map(k => parseInt(k.split('_')[0])));
   return [...years].sort((a, b) => b - a);
 }
+
+// Rename category/name across ALL months in kijiStore
+export function renameKijiItems(
+  oldCode: string, oldCategory: string, oldName: string,
+  newCategory: string, newName: string
+): void {
+  const data = load();
+  for (const ym of Object.keys(data)) {
+    data[ym] = data[ym].map(item =>
+      item.code === oldCode && item.category === oldCategory && item.name === oldName
+        ? { ...item, category: newCategory, name: newName }
+        : item
+    );
+  }
+  save(data);
+}

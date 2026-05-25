@@ -133,3 +133,74 @@
   .two-col { grid-template-columns: 1fr; }
   .hbar-label { width: 120px; }
 }
+
+/* 品目管理 tab styles */
+.manage-selectors {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.manage-selectors select {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+.manage-table input.manage-input {
+  width: 80px;
+  padding: 2px 4px;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.manage-table input.name-input {
+  width: 160px;
+}
+.manage-table tr.excluded-row td {
+  color: #aaa;
+  font-style: italic;
+}
+.manage-totals {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #f0f4f8;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.manage-total-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.manage-total-label {
+  font-size: 13px;
+  color: #555;
+}
+.manage-num-input {
+  width: 70px;
+  padding: 4px 6px;
+  border: 1px solid #1a3a5c;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: right;
+}
+.manage-num-input.wide {
+  width: 110px;
+}
+.manage-save-btn {
+  padding: 7px 18px;
+  background: #1a3a5c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-left: auto;
+}
+.manage-save-btn:hover { background: #2a5a8c; }

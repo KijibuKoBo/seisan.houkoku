@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
-import { KijiItem } from '../types';
-import { loadAllKijiItems, getAvailableKijiYears } from '../utils/kijiStore';
+import { useState, useMemo, useEffect } from 'react';
+import { KijiItem, YearStore } from '../types';
+import { loadAllKijiItems, getAvailableKijiYears, loadKijiItems, saveKijiItems } from '../utils/kijiStore';
 import './KijiAnalysis.css';
 
 // ─── aggregate helpers ───────────────────────────────────────────────────────
@@ -180,7 +180,7 @@ function DonutChart({ data }: { data: { label: string; value: number; color: str
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-type Tab = 'ranking' | 'product' | 'category' | 'monthly' | 'yearly';
+type Tab = 'ranking' | 'product' | 'category' | 'monthly' | 'yearly' | 'manage';
 
 const TAB_LABELS: [Tab, string][] = [
   ['ranking', 'ランキング'],
@@ -188,16 +188,24 @@ const TAB_LABELS: [Tab, string][] = [
   ['category', 'カテゴリー別'],
   ['monthly', '月別トレンド'],
   ['yearly', '年別比較'],
+  ['manage', '品目管理'],
 ];
 
-export default function KijiAnalysis() {
+interface KijiAnalysisProps {
+  store: YearStore;
+  onSaveMonthKiji: (year: number, month: number, count: number, amount: number) => void;
+  canEdit: boolean;
+}
+
+export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAnalysisProps) {
   const [tab, setTab] = useState<Tab>('ranking');
   const [selectedYears, setSelectedYears] = useState<number[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<ProductStat | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<CategoryStat | null>(null);
   const [rankBy, setRankBy] = useState<'count' | 'amount'>('count');
 
-  const allItems = useMemo(() => loadAllKijiItems(), []);
+  const [allItems, setAllItems] = useState<KijiItem[]>(() => loadAllKijiItems());
+  const refreshItems = () => setAllItems(loadAllKijiItems());
   const availableYears = useMemo(() => getAvailableKijiYears(), []);
 
   const currentReiwa = new Date().getFullYear() - 2018;
@@ -440,6 +448,17 @@ export default function KijiAnalysis() {
           </div>
         )}
 
+        {/* ── 品目管理 ── */}
+        {tab === 'manage' && (
+          <ManageTab
+            availableYears={availableYears}
+            store={store}
+            onSaveMonthKiji={onSaveMonthKiji}
+            canEdit={canEdit}
+            onRefresh={refreshItems}
+          />
+        )}
+
         {/* ── 年別比較 ── */}
         {tab === 'yearly' && (
           <div className="kiji-section">
@@ -636,6 +655,134 @@ function CategoryDetail({ category, onBack }:
             sub="本"
           />
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Manage tab ───────────────────────────────────────────────────────────────
+
+function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh }: {
+  availableYears: number[];
+  store: YearStore;
+  onSaveMonthKiji: (year: number, month: number, count: number, amount: number) => void;
+  canEdit: boolean;
+  onRefresh: () => void;
+}) {
+  const currentReiwa = new Date().getFullYear() - 2018;
+  const [selYear, setSelYear] = useState(availableYears[0] ?? currentReiwa);
+  const [selMonth, setSelMonth] = useState(1);
+  const [items, setItems] = useState<KijiItem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalAmount, setTotalAmount] = useState(0);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    const loaded = loadKijiItems(selYear, selMonth);
+    setItems(loaded);
+    const md = store[selYear]?.[selMonth];
+    setTotalCount(md?.kiji.count ?? loaded.filter(i => !i.excluded).reduce((s, i) => s + i.count, 0));
+    setTotalAmount(md?.kiji.amount ?? loaded.filter(i => !i.excluded).reduce((s, i) => s + i.amount, 0));
+    setSaved(false);
+  }, [selYear, selMonth]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const updateItem = (idx: number, field: 'category' | 'name', value: string) => {
+    setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+  };
+
+  const handleSave = () => {
+    saveKijiItems(selYear, selMonth, items);
+    onSaveMonthKiji(selYear, selMonth, totalCount, totalAmount);
+    setSaved(true);
+    onRefresh();
+  };
+
+  return (
+    <div className="kiji-section">
+      <div className="manage-selectors">
+        <label>年：</label>
+        <select value={selYear} onChange={e => setSelYear(Number(e.target.value))}>
+          {availableYears.map(y => <option key={y} value={y}>令和{y}年</option>)}
+        </select>
+        <label>月：</label>
+        <select value={selMonth} onChange={e => setSelMonth(Number(e.target.value))}>
+          {Array.from({length:12},(_,i)=>i+1).map(m => <option key={m} value={m}>{m}月</option>)}
+        </select>
+      </div>
+
+      {items.length === 0 ? (
+        <p style={{color:'#999',margin:'24px 0'}}>この月のPDFデータがありません</p>
+      ) : (
+        <table className="kiji-table manage-table">
+          <thead>
+            <tr>
+              <th>品番</th>
+              <th>カテゴリー</th>
+              <th>品名</th>
+              <th>本数</th>
+              <th>金額</th>
+              <th>除外</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item, idx) => (
+              <tr key={idx} className={item.excluded ? 'excluded-row' : ''}>
+                <td>{item.code}</td>
+                <td>
+                  {canEdit ? (
+                    <input
+                      className="manage-input"
+                      value={item.category}
+                      onChange={e => updateItem(idx, 'category', e.target.value)}
+                    />
+                  ) : item.category}
+                </td>
+                <td>
+                  {canEdit ? (
+                    <input
+                      className="manage-input name-input"
+                      value={item.name}
+                      onChange={e => updateItem(idx, 'name', e.target.value)}
+                    />
+                  ) : item.name}
+                </td>
+                <td className="num">{item.count}本</td>
+                <td className="num">{item.amount > 0 ? `¥${item.amount.toLocaleString()}` : '—'}</td>
+                <td className="num">{item.excluded ? '✓' : ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <div className="manage-totals">
+        <div className="manage-total-row">
+          <span className="manage-total-label">木地部 月次合計　本数：</span>
+          {canEdit ? (
+            <input
+              type="number"
+              className="manage-num-input"
+              value={totalCount}
+              onChange={e => setTotalCount(Number(e.target.value))}
+            />
+          ) : <strong>{totalCount}</strong>}
+          <span>本</span>
+          <span className="manage-total-label" style={{marginLeft:24}}>金額：</span>
+          {canEdit ? (
+            <input
+              type="number"
+              className="manage-num-input wide"
+              value={totalAmount}
+              onChange={e => setTotalAmount(Number(e.target.value))}
+            />
+          ) : <strong>{totalAmount.toLocaleString()}</strong>}
+          <span>円</span>
+        </div>
+        {canEdit && (
+          <button className="manage-save-btn" onClick={handleSave}>
+            {saved ? '✓ 保存しました' : '月次データに反映'}
+          </button>
+        )}
       </div>
     </div>
   );

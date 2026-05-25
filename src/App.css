@@ -561,6 +561,33 @@ tfoot .footer-note td {
   font-size: 13px; font-family: inherit;
 }
 
+/* Print button */
+.table-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+.print-btn {
+  padding: 6px 14px;
+  background: #fff;
+  border: 1px solid #1a3a5c;
+  color: #1a3a5c;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.print-btn:hover { background: #f0f4f8; }
+
+@media print {
+  .app-header, .year-bar, .compact-summary, .table-header-actions, .footer-note {
+    display: none !important;
+  }
+  .app-main { padding: 0; }
+  .table-wrapper { overflow: visible; }
+  .yearly-table { font-size: 10px; }
+  .monthly-btn { display: none; }
+}
+
 /* レスポンシブ */
 @media (max-width: 600px) {
   .app-header { flex-direction: column; gap: 0; align-items: stretch; }
