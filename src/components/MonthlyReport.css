@@ -420,49 +420,48 @@
     max-width: none;
     width: 100%;
     background: white;
-    /* Scale to fit A4 width (794px usable at 96dpi - 18mm margins) */
-    zoom: 0.78;
+    zoom: 0.86;
   }
 
-  /* Compact sizes for A4 single page */
-  .mr-header         { padding: 8px 16px; }
-  .mr-company        { font-size: 9px; }
-  .mr-title          { font-size: 16px; }
-  .mr-period         { font-size: 11px; }
-  .mr-created        { font-size: 10px; }
-  .mr-body           { padding: 8px 14px 12px; }
+  /* Sized to fill A4 vertically */
+  .mr-header         { padding: 12px 20px; }
+  .mr-company        { font-size: 10px; }
+  .mr-title          { font-size: 18px; }
+  .mr-period         { font-size: 12px; }
+  .mr-created        { font-size: 11px; }
+  .mr-body           { padding: 14px 18px 18px; }
 
-  .mr-top-row        { gap: 8px; margin-bottom: 10px; }
-  .mr-card           { padding: 8px 12px; }
-  .mr-card-label     { font-size: 9px; margin-bottom: 6px; }
-  .mr-summary-grid   { grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .mr-sg-head        { font-size: 9px; }
-  .mr-sg-big         { font-size: 14px; }
-  .mr-sg-prev        { font-size: 11px; }
-  .mr-sg-ratio       { font-size: 14px; }
+  .mr-top-row        { gap: 12px; margin-bottom: 16px; }
+  .mr-card           { padding: 12px 16px; }
+  .mr-card-label     { font-size: 10px; margin-bottom: 8px; }
+  .mr-summary-grid   { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .mr-sg-head        { font-size: 10px; margin-bottom: 3px; }
+  .mr-sg-big         { font-size: 16px; }
+  .mr-sg-prev        { font-size: 13px; }
+  .mr-sg-ratio       { font-size: 16px; }
 
-  .mr-legend-row     { gap: 3px; }
-  .mr-legend-name    { font-size: 10px; }
-  .mr-legend-pct     { font-size: 9px; }
+  .mr-legend-row     { gap: 4px; }
+  .mr-legend-name    { font-size: 11px; }
+  .mr-legend-pct     { font-size: 10px; }
 
-  .mr-sec-title      { font-size: 10px; margin: 0 0 4px; }
+  .mr-sec-title      { font-size: 11px; margin: 0 0 6px; }
 
-  .mr-dept-table     { font-size: 10px; }
-  .mr-dept-table th  { padding: 5px 8px; }
-  .mr-dept-row td    { padding: 4px 8px; }
-  .mr-dept-total td  { padding: 5px 8px; }
-  .mr-icon-circle    { width: 20px; height: 20px; font-size: 9px; }
-  .pct-val           { font-size: 10px; }
+  .mr-dept-table     { font-size: 11px; }
+  .mr-dept-table th  { padding: 7px 10px; }
+  .mr-dept-row td    { padding: 6px 10px; }
+  .mr-dept-total td  { padding: 7px 10px; }
+  .mr-icon-circle    { width: 22px; height: 22px; font-size: 10px; }
+  .pct-val           { font-size: 11px; }
 
-  .mr-sec-cards      { grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
-  .mr-sec-card       { padding: 8px 10px; }
-  .mr-sc-title       { font-size: 10px; margin-bottom: 6px; }
-  .mr-sc-row         { font-size: 10px; margin-bottom: 3px; }
-  .mr-sc-pct         { font-size: 9px; }
+  .mr-sec-cards      { grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .mr-sec-card       { padding: 12px 14px; }
+  .mr-sc-title       { font-size: 12px; margin-bottom: 8px; }
+  .mr-sc-row         { font-size: 11px; margin-bottom: 5px; }
+  .mr-sc-pct         { font-size: 10px; }
 
-  .mr-points         { padding: 8px 12px; }
-  .mr-points-title   { font-size: 11px; margin-bottom: 4px; }
-  .mr-points-list    { font-size: 10px; line-height: 1.7; }
+  .mr-points         { padding: 12px 16px; }
+  .mr-points-title   { font-size: 12px; margin-bottom: 6px; }
+  .mr-points-list    { font-size: 11px; line-height: 1.9; }
 }
 
 @media (max-width: 680px) {
