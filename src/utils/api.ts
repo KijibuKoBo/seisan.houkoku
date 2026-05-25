@@ -13,6 +13,24 @@ export async function apiSet(key: string, value: string): Promise<void> {
   } catch { /* best effort — app still works via localStorage */ }
 }
 
+export async function logChange(user: string, year: number, month: number, summary: string): Promise<void> {
+  try {
+    await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Token': TOKEN },
+      body: JSON.stringify({ action: 'log', user, year, month, summary }),
+    });
+  } catch { /* best effort */ }
+}
+
+export async function getChangeLogs(): Promise<import('../types').ChangeLogEntry[]> {
+  try {
+    const res = await fetch(`${API}?log=1`, { headers: { 'X-Token': TOKEN } });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch { return []; }
+}
+
 // On startup: pull server data into localStorage, and migrate local-only data up
 export async function syncFromServer(): Promise<void> {
   try {

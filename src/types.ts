@@ -36,6 +36,15 @@ export interface MonthData {
   salesMemo?: Partial<Record<keyof SalesData, string>>;
 }
 
+export interface ChangeLogEntry {
+  id: number;
+  user: string;
+  year: number;
+  month: number;
+  ts: string;
+  summary: string;
+}
+
 export type YearStore = {
   [year: number]: {
     [month: number]: MonthData;

@@ -3,13 +3,14 @@ import { YearStore, MonthData, AuthSession, KijiItem } from './types';
 import { loadStore, saveStore, setMonthData } from './utils/store';
 import { initDefaultUsers, getSession, logout } from './utils/auth';
 import { saveKijiItems } from './utils/kijiStore';
-import { syncFromServer } from './utils/api';
+import { syncFromServer, logChange, getChangeLogs } from './utils/api';
 import YearlyTable, { CompactSummary } from './components/YearlyTable';
 import MonthModal from './components/MonthModal';
 import LoginPage from './components/LoginPage';
 import UserManager from './components/UserManager';
 import KijiAnalysis from './pages/KijiAnalysis';
 import MonthlyReport from './components/MonthlyReport';
+import ChangeLog from './components/ChangeLog';
 import './App.css';
 
 const currentReiwa = new Date().getFullYear() - 2018;
@@ -28,6 +29,7 @@ export default function App() {
   const [page, setPage] = useState<Page>('report');
   const [syncing, setSyncing] = useState(true);
   const [showMonthlyReport, setShowMonthlyReport] = useState(false);
+  const [showChangeLog, setShowChangeLog] = useState(false);
 
   useEffect(() => {
     initDefaultUsers();
@@ -61,12 +63,36 @@ export default function App() {
 
   const handleSave = useCallback((data: MonthData, kijiItems: KijiItem[]) => {
     if (editingMonth === null) return;
+    const prev = store[selectedYear]?.[editingMonth];
     const next = setMonthData(store, selectedYear, editingMonth, data);
     setStore(next);
     saveStore(next);
     if (kijiItems.length > 0) saveKijiItems(selectedYear, editingMonth, kijiItems);
+
+    // Build change summary
+    const labels: Record<string, string> = {
+      otsuka: '大塚', takumi: '匠', butsudan: '仏壇',
+      ippanten: '一般店', showroom: 'SR', bukken: 'その他',
+    };
+    const diffs: string[] = [];
+    (Object.keys(labels) as (keyof typeof data.sales)[]).forEach(k => {
+      const o = prev?.sales[k] ?? 0;
+      const n = data.sales[k];
+      if (o !== n) diffs.push(`${labels[k]}: ${o.toLocaleString()}→${n.toLocaleString()}`);
+    });
+    (['kiji', 'tosou', 'matome'] as const).forEach(s => {
+      const sLabel = s === 'kiji' ? '木地' : s === 'tosou' ? '塗装' : 'まとめ';
+      if ((prev?.[s].count ?? 0) !== data[s].count)
+        diffs.push(`${sLabel}本数: ${prev?.[s].count ?? 0}→${data[s].count}`);
+      if ((prev?.[s].amount ?? 0) !== data[s].amount)
+        diffs.push(`${sLabel}金額: ${(prev?.[s].amount ?? 0).toLocaleString()}→${data[s].amount.toLocaleString()}`);
+    });
+    if (diffs.length > 0) {
+      logChange(session!.displayName, selectedYear, editingMonth, diffs.join(' / '));
+    }
+
     setEditingMonth(null);
-  }, [store, selectedYear, editingMonth]);
+  }, [store, selectedYear, editingMonth, session]);
 
   const getPrevMonthData = (month: number): MonthData | null => {
     if (month === 1) return store[selectedYear - 1]?.[12] ?? null;
@@ -117,6 +143,7 @@ export default function App() {
             {session.displayName}
             {session.role === 'admin' && <span className="role-badge">管理者</span>}
           </span>
+          <button className="changelog-btn" onClick={() => setShowChangeLog(true)}>変更ログ</button>
           <button className="logout-btn" onClick={handleLogout}>ログアウト</button>
         </div>
       </header>
@@ -159,6 +186,10 @@ export default function App() {
 
         {page === 'users' && canEdit && <UserManager />}
       </main>
+
+      {showChangeLog && (
+        <ChangeLog getChangeLogs={getChangeLogs} onClose={() => setShowChangeLog(false)} />
+      )}
 
       {showMonthlyReport && (
         <MonthlyReport

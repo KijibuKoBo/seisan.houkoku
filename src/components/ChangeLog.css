@@ -1,0 +1,53 @@
+.cl-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 200; display: flex; align-items: flex-start;
+  justify-content: center; padding: 40px 20px; overflow-y: auto;
+}
+
+.cl-modal {
+  background: white; border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+  width: 100%; max-width: 780px; overflow: hidden;
+}
+
+.cl-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px; background: #1a3a5c; color: white;
+}
+
+.cl-title { font-size: 15px; font-weight: bold; letter-spacing: 1px; }
+
+.cl-close {
+  background: none; border: 1px solid rgba(255,255,255,0.3);
+  color: white; border-radius: 4px; padding: 4px 10px;
+  cursor: pointer; font-size: 13px;
+}
+.cl-close:hover { background: rgba(255,255,255,0.15); }
+
+.cl-body { padding: 16px 20px; max-height: 70vh; overflow-y: auto; }
+
+.cl-loading, .cl-empty {
+  text-align: center; color: #888; padding: 40px; font-size: 13px;
+}
+
+.cl-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+
+.cl-table th {
+  background: #f0f4f8; color: #1a3a5c; font-weight: 600;
+  padding: 8px 10px; text-align: left; border-bottom: 2px solid #d0d8e8;
+  white-space: nowrap;
+}
+
+.cl-table td {
+  padding: 8px 10px; border-bottom: 1px solid #f0f0f0;
+  vertical-align: top;
+}
+
+.cl-table tr:hover td { background: #f7f9fc; }
+
+.cl-ts      { white-space: nowrap; color: #888; width: 130px; }
+.cl-user    { white-space: nowrap; font-weight: 600; color: #1a3a5c; width: 90px; }
+.cl-ym      { white-space: nowrap; width: 110px; }
+.cl-summary { color: #333; line-height: 1.6; }

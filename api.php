@@ -55,9 +55,25 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS app_data (
     `ts` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+$pdo->exec("CREATE TABLE IF NOT EXISTS change_log (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user` VARCHAR(100) NOT NULL,
+    `year` SMALLINT NOT NULL,
+    `month` TINYINT NOT NULL,
+    `summary` TEXT NOT NULL,
+    `ts` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_ym (`year`, `month`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
+    // Change log endpoint
+    if (isset($_GET['log'])) {
+        $stmt = $pdo->query("SELECT id, user, year, month, summary, ts FROM change_log ORDER BY ts DESC LIMIT 200");
+        echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+        exit;
+    }
     $key = $_GET['key'] ?? null;
     if ($key) {
         $stmt = $pdo->prepare("SELECT v FROM app_data WHERE k = ?");
@@ -74,6 +90,22 @@ if ($method === 'GET') {
     }
 } elseif ($method === 'POST') {
     $body = json_decode(file_get_contents('php://input'), true);
+
+    // Change log insert
+    if (($body['action'] ?? '') === 'log') {
+        $stmt = $pdo->prepare(
+            "INSERT INTO change_log (user, year, month, summary) VALUES (?, ?, ?, ?)"
+        );
+        $stmt->execute([
+            $body['user']    ?? '不明',
+            (int)($body['year']  ?? 0),
+            (int)($body['month'] ?? 0),
+            $body['summary'] ?? '',
+        ]);
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+
     $key  = $body['key']   ?? '';
     $value = $body['value'] ?? '';
     if (!$key) {
