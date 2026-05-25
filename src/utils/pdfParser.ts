@@ -22,7 +22,6 @@ export async function parsePdf(file: File): Promise<PdfParseResult> {
 }
 
 async function extractTextFromPdf(buffer: ArrayBuffer): Promise<string> {
-  // Dynamic import to avoid worker setup issues at module load time
   const pdfjsLib = await import('pdfjs-dist');
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -34,10 +33,23 @@ async function extractTextFromPdf(buffer: ArrayBuffer): Promise<string> {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    const pageText = content.items
-      .map((item) => ('str' in item ? (item as { str: string }).str : ''))
-      .join('\n');
-    fullText += pageText + '\n';
+
+    // Group text items by Y coordinate so that "79" and "本" on the same row
+    // are concatenated into "79本" rather than separated by a newline.
+    const lineMap = new Map<number, string>();
+    for (const raw of content.items) {
+      if (!('str' in raw)) continue;
+      const item = raw as { str: string; transform: number[] };
+      if (!item.str.trim()) continue;
+      const y = Math.round(item.transform[5] / 4) * 4; // bucket to 4px
+      lineMap.set(y, (lineMap.get(y) ?? '') + item.str);
+    }
+
+    // Sort descending by Y (PDF origin is bottom-left)
+    const lines = [...lineMap.entries()]
+      .sort((a, b) => b[0] - a[0])
+      .map(([, t]) => t);
+    fullText += lines.join('\n') + '\n';
   }
   return fullText;
 }
@@ -58,7 +70,13 @@ function parseText(text: string): PdfParseResult {
   const items: PdfItem[] = [];
   const productLineRegex = /^(\d{4})\s+(.+)/;
 
-  // Collect all 本数 values (appears as "XX本" pattern)
+  // Extract total count: scan ALL 本 occurrences, last one is the grand total.
+  // (pdfjs sometimes concatenates "1本79本" on one line when columns merge)
+  const allHonsuMatches = [...text.matchAll(/(\d+)本/g)];
+  const totalCount = allHonsuMatches.length > 0
+    ? parseInt(allHonsuMatches[allHonsuMatches.length - 1][1])
+    : 0;
+
   const countValues: number[] = [];
   const excludedFlags: boolean[] = [];
 
@@ -111,10 +129,7 @@ function parseText(text: string): PdfParseResult {
     }
   }
 
-  // The last count value is the total
-  const totalCount = countValues.length > 0 ? countValues[countValues.length - 1] : 0;
-
-  // Match count values to items (countValues[0..n-2] map to items, countValues[n-1] is total)
+  // Match count values to items (all except last map to items; last is total)
   const itemCounts = countValues.slice(0, countValues.length - 1);
   items.forEach((item, i) => {
     if (i < itemCounts.length) {
@@ -123,19 +138,19 @@ function parseText(text: string): PdfParseResult {
     }
   });
 
-  // Total amount: find the last standalone large number in the text
+  // Total amount: scan every line for comma-formatted numbers >= 100,000.
+  // After line-grouping, "1,460,000" and "79本" share a line as "1,460,00079本",
+  // so we use a regex that correctly extracts "1,460,000" out of that string.
   let totalAmount = 0;
   for (const line of lines) {
-    const standaloneNum = line.match(/^([\d,]+)$/);
-    if (standaloneNum) {
-      const n = parseInt(standaloneNum[1].replace(/,/g, ''));
-      if (n >= 100000) {
-        totalAmount = n;
-      }
+    const nums = [...line.matchAll(/\d{1,3}(?:,\d{3})+/g)];
+    for (const m of nums) {
+      const n = parseInt(m[0].replace(/,/g, ''));
+      if (n >= 100000) totalAmount = n;
     }
   }
 
-  // If we couldn't find a standalone total, sum the item amounts
+  // Fallback: sum item amounts
   if (totalAmount === 0 && items.length > 0) {
     totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
   }
