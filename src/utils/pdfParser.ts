@@ -22,16 +22,12 @@ interface RawTextItem {
 
 async function extractRawItems(buffer: ArrayBuffer): Promise<RawTextItem[]> {
   const pdfjsLib = await import('pdfjs-dist');
-  const workerUrl = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
-  try {
-    const resp = await fetch(workerUrl);
-    const code = await resp.text();
-    pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
-      new Blob([code], { type: 'application/javascript' })
-    );
-  } catch {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
-  }
+  // Worker file is renamed .mjs → .js at build time (vite.config.ts plugin)
+  // so Apache/XServer serves it with correct application/javascript MIME type
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url
+  ).toString().replace(/\.mjs(\?.*)?$/, '.js$1');
 
   const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
   const result: RawTextItem[] = [];
