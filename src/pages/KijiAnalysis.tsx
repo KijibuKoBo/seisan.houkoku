@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { KijiItem, YearStore } from '../types';
-import { loadAllKijiItems, getAvailableKijiYears, loadKijiItems, saveKijiItems } from '../utils/kijiStore';
+import { loadAllKijiItems, getAvailableKijiYears, loadKijiItems, saveKijiItems, renameKijiItems } from '../utils/kijiStore';
 import './KijiAnalysis.css';
 
 // ─── aggregate helpers ───────────────────────────────────────────────────────
@@ -673,6 +673,7 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
   const [selYear, setSelYear] = useState(availableYears[0] ?? currentReiwa);
   const [selMonth, setSelMonth] = useState(1);
   const [items, setItems] = useState<KijiItem[]>([]);
+  const [origItems, setOrigItems] = useState<KijiItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
   const [saved, setSaved] = useState(false);
@@ -680,6 +681,7 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
   useEffect(() => {
     const loaded = loadKijiItems(selYear, selMonth);
     setItems(loaded);
+    setOrigItems(loaded);
     const md = store[selYear]?.[selMonth];
     setTotalCount(md?.kiji.count ?? loaded.filter(i => !i.excluded).reduce((s, i) => s + i.count, 0));
     setTotalAmount(md?.kiji.amount ?? loaded.filter(i => !i.excluded).reduce((s, i) => s + i.amount, 0));
@@ -691,8 +693,19 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
   };
 
   const handleSave = () => {
+    // Apply renames across ALL months for any changed category/name
+    for (let i = 0; i < origItems.length; i++) {
+      const orig = origItems[i];
+      const curr = items[i];
+      if (!curr) continue;
+      if (orig.category !== curr.category || orig.name !== curr.name) {
+        renameKijiItems(orig.code, orig.category, orig.name, curr.category, curr.name);
+      }
+    }
+    // Save this month's full item list (counts, amounts, etc.)
     saveKijiItems(selYear, selMonth, items);
     onSaveMonthKiji(selYear, selMonth, totalCount, totalAmount);
+    setOrigItems(items);
     setSaved(true);
     onRefresh();
   };
