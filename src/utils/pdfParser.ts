@@ -119,9 +119,14 @@ function detectFormat(items: RawTextItem[]): Format {
   // 上下余白（タイトル/フッター行）を除いたデータ行のみで判定
   const dataRows = items.filter(i => i.y < yMax - 20 && i.y > yMin + 20);
 
-  if (dataRows.some(i => i.x < COL_A.A_LOT_MAX)) return 'A';            // A列ロット番号あり
-  if (dataRows.some(i => i.x >= COL_B.B_CAT_MIN && i.x < COL_B.B_CAT_MAX)) return 'B'; // ロットなし形式
-  return 'C';                                                              // 旧形式
+  // A: x<75にロット番号がある
+  if (dataRows.some(i => i.x < COL_A.A_LOT_MAX)) return 'A';
+
+  // B: カテゴリーがx≈142から始まるフォーマット（x 95-125 の範囲にデータなし）
+  //    C/旧形式はカテゴリーがx≈102にあるため、この範囲にデータが存在する
+  if (!dataRows.some(i => i.x >= 95 && i.x < 125)) return 'B';
+
+  return 'C'; // 旧形式: カテゴリーx≈75-105
 }
 
 function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: number): PdfParseResult {
