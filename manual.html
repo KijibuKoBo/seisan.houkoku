@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生産月次報告システム 操作マニュアル</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Meiryo", "MS Gothic", sans-serif;
+    font-size: 11pt;
+    color: #222;
+    background: #f5f5f5;
+    padding: 20px;
+  }
+
+  .page {
+    background: white;
+    max-width: 210mm;
+    margin: 0 auto 20px;
+    padding: 20mm 18mm;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    min-height: 297mm;
+  }
+
+  /* Cover page */
+  .cover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 260mm;
+    text-align: center;
+  }
+
+  .cover-logo {
+    font-size: 48pt;
+    margin-bottom: 16px;
+  }
+
+  .cover-subtitle {
+    font-size: 11pt;
+    color: #1a3a5c;
+    letter-spacing: 4px;
+    margin-bottom: 8px;
+    border-top: 1px solid #1a3a5c;
+    border-bottom: 1px solid #1a3a5c;
+    padding: 6px 24px;
+  }
+
+  .cover-title {
+    font-size: 22pt;
+    font-weight: bold;
+    color: #1a3a5c;
+    letter-spacing: 3px;
+    margin: 16px 0 8px;
+  }
+
+  .cover-eng {
+    font-size: 10pt;
+    color: #666;
+    letter-spacing: 2px;
+    margin-bottom: 40px;
+  }
+
+  .cover-info {
+    margin-top: 40px;
+    font-size: 10pt;
+    color: #555;
+    line-height: 2;
+    border-top: 1px solid #ccc;
+    padding-top: 20px;
+    width: 260px;
+  }
+
+  .cover-info td:first-child {
+    color: #888;
+    width: 80px;
+    text-align: right;
+    padding-right: 12px;
+  }
+
+  /* Section headers */
+  h1 {
+    font-size: 15pt;
+    font-weight: bold;
+    color: white;
+    background: #1a3a5c;
+    padding: 10px 16px;
+    margin: 0 -18mm 20px;
+    letter-spacing: 2px;
+  }
+
+  h2 {
+    font-size: 12pt;
+    font-weight: bold;
+    color: #1a3a5c;
+    border-left: 4px solid #1a3a5c;
+    padding-left: 10px;
+    margin: 24px 0 12px;
+  }
+
+  h3 {
+    font-size: 10.5pt;
+    font-weight: bold;
+    color: #2a5080;
+    margin: 16px 0 8px;
+    padding-bottom: 3px;
+    border-bottom: 1px dashed #b0c4d8;
+  }
+
+  p {
+    line-height: 1.8;
+    margin-bottom: 8px;
+  }
+
+  /* Step boxes */
+  .steps {
+    counter-reset: step-counter;
+    margin: 12px 0;
+  }
+
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+    background: #f8fafd;
+    border: 1px solid #d8e4f0;
+    border-radius: 6px;
+    padding: 10px 14px;
+  }
+
+  .step-num {
+    background: #1a3a5c;
+    color: white;
+    font-weight: bold;
+    font-size: 10pt;
+    min-width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .step-body {
+    flex: 1;
+    line-height: 1.7;
+  }
+
+  .step-body strong {
+    color: #1a3a5c;
+  }
+
+  /* Info box */
+  .info-box {
+    background: #e8f4fd;
+    border: 1px solid #90c0e8;
+    border-left: 4px solid #1a7abf;
+    border-radius: 4px;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 10.5pt;
+    line-height: 1.7;
+  }
+
+  .warn-box {
+    background: #fff8e6;
+    border: 1px solid #f5c842;
+    border-left: 4px solid #e6a800;
+    border-radius: 4px;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 10.5pt;
+    line-height: 1.7;
+  }
+
+  /* Table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+    margin: 12px 0;
+  }
+
+  th {
+    background: #1a3a5c;
+    color: white;
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 10pt;
+  }
+
+  td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #e0e8f0;
+    vertical-align: top;
+    line-height: 1.6;
+  }
+
+  tr:nth-child(even) td { background: #f5f8fc; }
+
+  /* Key badge */
+  .key {
+    display: inline-block;
+    background: #1a3a5c;
+    color: white;
+    border-radius: 4px;
+    padding: 1px 8px;
+    font-size: 9.5pt;
+    font-weight: bold;
+    vertical-align: middle;
+  }
+
+  .badge {
+    display: inline-block;
+    border-radius: 4px;
+    padding: 1px 8px;
+    font-size: 9pt;
+    font-weight: bold;
+    vertical-align: middle;
+  }
+
+  .badge-admin { background: #dc3545; color: white; }
+  .badge-viewer { background: #28a745; color: white; }
+
+  /* Icon row */
+  .icon-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 10px 0;
+  }
+
+  .icon-card {
+    flex: 1;
+    min-width: 120px;
+    background: #f0f4f8;
+    border: 1px solid #ccd8e8;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .icon-card .icon { font-size: 24pt; }
+  .icon-card .label { font-size: 9pt; color: #555; margin-top: 4px; }
+
+  /* Print */
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  @media print {
+    body {
+      background: white;
+      padding: 0;
+    }
+
+    .page {
+      box-shadow: none;
+      margin: 0;
+      page-break-after: always;
+      padding: 15mm 18mm;
+    }
+
+    .page:last-child {
+      page-break-after: auto;
+    }
+
+    h1 {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    th {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .step-num {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .badge-admin, .badge-viewer {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+
+  .toc-item {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px dotted #ccc;
+    padding: 5px 0;
+    font-size: 10.5pt;
+  }
+
+  .toc-num {
+    color: #1a3a5c;
+    font-weight: bold;
+    margin-right: 8px;
+  }
+
+  .screen-label {
+    display: inline-block;
+    background: #1a3a5c;
+    color: white;
+    font-size: 9pt;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin: 2px 0;
+  }
+
+  ul, ol { padding-left: 20px; line-height: 1.9; }
+  li { margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ===== COVER ===== -->
+<div class="page">
+  <div class="cover">
+    <div class="cover-logo">📊</div>
+    <div class="cover-subtitle">松永工房</div>
+    <div class="cover-title">生産月次報告システム</div>
+    <div class="cover-eng">Monthly Production Report System</div>
+    <p style="color:#555; font-size:10pt;">操作マニュアル</p>
+    <div class="cover-info">
+      <table>
+        <tr><td>対象</td><td>事務スタッフ（閲覧・印刷）</td></tr>
+        <tr><td>作成日</td><td>令和7年5月</td></tr>
+        <tr><td>バージョン</td><td>1.0</td></tr>
+        <tr><td>URL</td><td style="font-size:9pt;">https://spengats.xsrv.jp/seisanhyo/</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE 2: TOC + Login ===== -->
+<div class="page">
+  <h1>目次</h1>
+
+  <div style="margin: 16px 0 28px;">
+    <div class="toc-item"><span><span class="toc-num">1.</span>アプリにアクセスする</span><span>このページ</span></div>
+    <div class="toc-item"><span><span class="toc-num">2.</span>ログインする</span><span>このページ</span></div>
+    <div class="toc-item"><span><span class="toc-num">3.</span>画面の見かた</span><span>次のページ</span></div>
+    <div class="toc-item"><span><span class="toc-num">4.</span>月次集計表を見る</span><span>次のページ</span></div>
+    <div class="toc-item"><span><span class="toc-num">5.</span>月次報告書を印刷する</span><span>次のページ</span></div>
+    <div class="toc-item"><span><span class="toc-num">6.</span>木地部報告書を見る・印刷する</span><span>次のページ</span></div>
+    <div class="toc-item"><span><span class="toc-num">7.</span>変更ログを確認する</span><span>次のページ</span></div>
+    <div class="toc-item"><span><span class="toc-num">8.</span>ログアウトする</span><span>次のページ</span></div>
+    <div class="toc-item"><span><span class="toc-num">付録</span>権限一覧・Q&amp;A</span><span>最後のページ</span></div>
+  </div>
+
+  <h1>１. アプリにアクセスする</h1>
+
+  <p>スマートフォン・タブレット・パソコン、どの端末のブラウザからでも使えます。</p>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">ブラウザ（Safari / Chrome など）を開く</div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">アドレスバーに以下のURLを入力する<br>
+      <span style="font-size:10.5pt; font-weight:bold; color:#1a3a5c; background:#e8f0f8; padding:4px 12px; border-radius:4px; display:inline-block; margin-top:4px;">
+        https://spengats.xsrv.jp/seisanhyo/
+      </span>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">ログイン画面が表示されたら、IDとパスワードを入力する</div>
+  </div>
+
+  <div class="info-box">
+    💡 よく使う場合はブックマークに登録しておくと便利です。<br>
+    スマホのホーム画面に追加することもできます。
+  </div>
+
+  <h1>２. ログインする</h1>
+
+  <p>アプリを開くとログイン画面が表示されます。</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body"><strong>IDとパスワードを入力</strong>して<strong>「ログイン」</strong>ボタンを押す</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">ログインに成功すると、月次集計表のメイン画面に移動します</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>役割</th>
+        <th>ログインID</th>
+        <th>できること</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="badge badge-admin">管理者</span></td>
+        <td>admin</td>
+        <td>データ閲覧・編集・印刷・ユーザー管理</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-viewer">事務</span></td>
+        <td>jimu</td>
+        <td>データ閲覧・印刷のみ（編集不可）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="warn-box">
+    ⚠️ パスワードを忘れた場合は管理者（責任者）に連絡してください。<br>
+    パスワードの変更は管理者のみが行えます。
+  </div>
+</div>
+
+<!-- ===== PAGE 3: Screen overview + Monthly table ===== -->
+<div class="page">
+  <h1>３. 画面の見かた</h1>
+
+  <p>ログインすると以下のような画面が表示されます。</p>
+
+  <h2>ヘッダー（画面上部）</h2>
+  <table>
+    <thead>
+      <tr><th>場所・ボタン</th><th>説明</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>画面タイトル（左上）</td>
+        <td>「生産月次報告」と表示されています</td>
+      </tr>
+      <tr>
+        <td><span class="key">月次集計</span> タブ</td>
+        <td>月別の売上・生産データを一覧で見るメイン画面</td>
+      </tr>
+      <tr>
+        <td><span class="key">木地部分析</span> タブ</td>
+        <td>木地部の生産品目の詳細分析画面</td>
+      </tr>
+      <tr>
+        <td><span class="key">ユーザー管理</span> タブ</td>
+        <td>管理者のみ表示。スタッフのアカウントを管理する</td>
+      </tr>
+      <tr>
+        <td><span class="key">変更ログ</span> ボタン（右上）</td>
+        <td>誰がいつデータを変更したかの履歴を確認できる</td>
+      </tr>
+      <tr>
+        <td>ログアウトボタン（右上）</td>
+        <td>アプリからログアウトする</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>年度選択ボタン</h2>
+  <p>ヘッダー下に年のボタンが並んでいます。クリックすると、その年度のデータに切り替わります。</p>
+
+  <h1>４. 月次集計表を見る</h1>
+
+  <p>「月次集計」タブを選ぶと、選択した年度の12ヶ月分のデータが一覧で表示されます。</p>
+
+  <h2>表の見かた</h2>
+  <table>
+    <thead>
+      <tr><th>項目</th><th>説明</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>売上（上段）</td>
+        <td>大塚・匠・仏壇・一般店・ショールーム・その他の6チャネル別の売上金額</td>
+      </tr>
+      <tr>
+        <td>計（小計）</td>
+        <td>各月の売上合計</td>
+      </tr>
+      <tr>
+        <td>木地・塗装・まとめ</td>
+        <td>各部門の生産本数と金額</td>
+      </tr>
+      <tr>
+        <td>年計</td>
+        <td>年間累計</td>
+      </tr>
+      <tr>
+        <td>月平均</td>
+        <td>月あたりの平均値</td>
+      </tr>
+      <tr>
+        <td>前年比</td>
+        <td>前年同期比（%）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="info-box">
+    💡 事務スタッフ（閲覧権限）はこの表を<strong>見るだけ</strong>です。数字の編集は管理者が行います。<br>
+    管理者がデータを更新すると、ページをリロードすると最新のデータが表示されます。
+  </div>
+
+  <h2>月次報告書ボタン</h2>
+  <p>表の右上にある <span class="key">📋 月次報告書</span> ボタンを押すと、月次報告書のプレビューが開きます。</p>
+</div>
+
+<!-- ===== PAGE 4: Print ===== -->
+<div class="page">
+  <h1>５. 月次報告書を印刷する</h1>
+
+  <p>特定の月の成績をまとめた「月次報告書」を印刷（またはPDF保存）できます。</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        表の右上にある <span class="key">📋 月次報告書</span> ボタンをクリック
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        月次報告書の画面が開く。上部の<strong>年・月セレクター</strong>で対象年月を選ぶ
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        内容を確認したら <span class="key">🖨️ 印刷</span> ボタンをクリック
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        印刷ダイアログが開く。<br>
+        ・紙に印刷する場合 → プリンターを選択して印刷<br>
+        ・PDFで保存する場合 → 「PDFとして保存」または「Microsoft Print to PDF」を選択
+      </div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    💡 <strong>印刷設定のポイント</strong><br>
+    用紙サイズ：<strong>A4（縦）</strong><br>
+    余白：<strong>最小</strong>または<strong>なし</strong><br>
+    倍率：<strong>100%</strong>（自動調整されています）<br>
+    ヘッダー・フッターの印刷：<strong>オフ</strong>にするとすっきりします
+  </div>
+
+  <h2>月次報告書の内容</h2>
+  <table>
+    <thead>
+      <tr><th>セクション</th><th>内容</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>ヘッダー</td>
+        <td>対象年月（令和◯年◯月）、印刷日</td>
+      </tr>
+      <tr>
+        <td>売上サマリー</td>
+        <td>当月売上合計、前月比、前年同月比などの要約カード</td>
+      </tr>
+      <tr>
+        <td>部門別売上</td>
+        <td>6チャネルの売上構成比と円グラフ</td>
+      </tr>
+      <tr>
+        <td>生産部門成績</td>
+        <td>木地・塗装・まとめの本数と金額</td>
+      </tr>
+      <tr>
+        <td>ポイント</td>
+        <td>前月・前年比の自動コメント</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h1>６. 木地部報告書を見る・印刷する</h1>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        ヘッダーの <span class="key">木地部分析</span> タブをクリック
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        左上の年月セレクターで見たい月を選ぶ
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <span class="key">月次報告書</span> ボタンをクリックすると木地部の月次報告モーダルが開く
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        内容確認後 <span class="key">🖨️ 印刷</span> ボタンで印刷またはPDF保存
+      </div>
+    </div>
+  </div>
+
+  <h2>木地部報告書の内容</h2>
+  <table>
+    <thead>
+      <tr><th>セクション</th><th>内容</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>サマリーカード（4枚）</td>
+        <td>総品目数・総本数・総金額・カテゴリ数</td>
+      </tr>
+      <tr>
+        <td>品目一覧テーブル</td>
+        <td>品目コード・品目名・カテゴリ・本数・金額の一覧</td>
+      </tr>
+      <tr>
+        <td>カテゴリ別構成（円グラフ）</td>
+        <td>Ca・仏壇・PC・特注・その他の比率</td>
+      </tr>
+      <tr>
+        <td>備考</td>
+        <td>自動生成された概要コメント</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== PAGE 5: Change log + Logout + Appendix ===== -->
+<div class="page">
+  <h1>７. 変更ログを確認する</h1>
+
+  <p>誰がいつ何のデータを変更したかを履歴として確認できます。</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        画面右上の <span class="key">変更ログ</span> ボタンをクリック
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        変更履歴の一覧が表示される。最新の変更が上に表示される
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        確認後、右上の <span class="key">✕</span> または背景をクリックして閉じる
+      </div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>列名</th><th>内容</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>日時</td><td>変更が行われた日時（年/月/日 時:分）</td></tr>
+      <tr><td>ユーザー</td><td>変更を行った担当者名</td></tr>
+      <tr><td>対象</td><td>変更された年月（例：令和7年 5月）</td></tr>
+      <tr><td>変更内容</td><td>変更前 → 変更後の数値サマリー</td></tr>
+    </tbody>
+  </table>
+
+  <h1>８. ログアウトする</h1>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        画面右上の <span class="key">ログアウト</span> ボタンをクリック
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        ログイン画面に戻ります
+      </div>
+    </div>
+  </div>
+
+  <div class="warn-box">
+    ⚠️ 共有の端末を使用している場合は、使い終わったら必ずログアウトしてください。<br>
+    ブラウザのタブを閉じるだけではログアウトされません。
+  </div>
+
+  <h1>付録：権限一覧</h1>
+
+  <table>
+    <thead>
+      <tr>
+        <th>機能</th>
+        <th style="text-align:center;"><span class="badge badge-admin">管理者</span></th>
+        <th style="text-align:center;"><span class="badge badge-viewer">事務</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>月次集計表を見る</td>
+        <td style="text-align:center;">✅</td>
+        <td style="text-align:center;">✅</td>
+      </tr>
+      <tr>
+        <td>月次報告書を見る・印刷する</td>
+        <td style="text-align:center;">✅</td>
+        <td style="text-align:center;">✅</td>
+      </tr>
+      <tr>
+        <td>木地部分析を見る・印刷する</td>
+        <td style="text-align:center;">✅</td>
+        <td style="text-align:center;">✅</td>
+      </tr>
+      <tr>
+        <td>変更ログを確認する</td>
+        <td style="text-align:center;">✅</td>
+        <td style="text-align:center;">✅</td>
+      </tr>
+      <tr>
+        <td>月別データを編集する</td>
+        <td style="text-align:center;">✅</td>
+        <td style="text-align:center;">❌</td>
+      </tr>
+      <tr>
+        <td>木地部PDFを取り込む</td>
+        <td style="text-align:center;">✅</td>
+        <td style="text-align:center;">❌</td>
+      </tr>
+      <tr>
+        <td>ユーザーを追加・変更・削除する</td>
+        <td style="text-align:center;">✅</td>
+        <td style="text-align:center;">❌</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h1>付録：よくある質問（Q&amp;A）</h1>
+
+  <h3>Q. データが表示されない・古いデータが表示される</h3>
+  <p>ブラウザの画面をリロード（更新）してください。スマホの場合は下に引っ張って更新するか、ブラウザの更新ボタンを押してください。</p>
+
+  <h3>Q. ログインできない</h3>
+  <p>IDとパスワードを確認してください。大文字・小文字の区別があります。解決しない場合は管理者（責任者）に連絡してください。</p>
+
+  <h3>Q. 印刷がうまくいかない・レイアウトが崩れる</h3>
+  <p>「印刷プレビュー」で用紙サイズが「A4縦」になっているか確認してください。「ページに合わせる」または倍率を調整してみてください。</p>
+
+  <h3>Q. スマホで使いにくい</h3>
+  <p>閲覧には対応していますが、データ入力はパソコンでの操作を推奨します。報告書の確認・印刷はスマホでも問題なく行えます。</p>
+
+  <h3>Q. 自分でデータを変更したい</h3>
+  <p>事務スタッフ（jimu）はデータの閲覧のみです。データの追加・修正は管理者（admin）が行います。管理者に連絡してください。</p>
+
+  <div style="text-align:center; margin-top:30px; padding-top:16px; border-top:1px solid #ddd; font-size:9pt; color:#888;">
+    松永工房 生産月次報告システム 操作マニュアル v1.0 &nbsp;|&nbsp; 令和7年5月
+  </div>
+</div>
+
+</body>
+</html>
