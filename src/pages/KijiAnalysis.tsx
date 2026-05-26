@@ -748,6 +748,16 @@ function CategoryDetail({ category, onBack }:
 
 // ─── Manage tab ───────────────────────────────────────────────────────────────
 
+interface ZipResult {
+  filename: string;
+  year: number;
+  month: number;
+  count: number;
+  amount: number;
+  items: number;
+  error?: string;
+}
+
 function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh }: {
   availableYears: number[];
   store: YearStore;
@@ -766,6 +776,72 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
   const [totalAmount, setTotalAmount] = useState(0);
   const [saved, setSaved] = useState(false);
   const [showReport, setShowReport] = useState(false);
+
+  // ZIP一括取込
+  const [zipProcessing, setZipProcessing] = useState(false);
+  const [zipProgress, setZipProgress] = useState('');
+  const [zipResults, setZipResults] = useState<ZipResult[]>([]);
+
+  const handleZipImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setZipProcessing(true);
+    setZipProgress('ZIPを展開中...');
+    setZipResults([]);
+
+    try {
+      const JSZip = (await import('jszip')).default;
+      const { parsePdf } = await import('../utils/pdfParser');
+      const zip = await JSZip.loadAsync(await file.arrayBuffer());
+
+      const pdfEntries = Object.entries(zip.files)
+        .filter(([name, f]) => !f.dir && name.toLowerCase().endsWith('.pdf'))
+        .sort(([a], [b]) => a.localeCompare(b));
+
+      if (pdfEntries.length === 0) {
+        setZipProgress('PDFファイルが見つかりませんでした');
+        setZipProcessing(false);
+        return;
+      }
+
+      const results: ZipResult[] = [];
+
+      for (let i = 0; i < pdfEntries.length; i++) {
+        const [filename, entry] = pdfEntries[i];
+        setZipProgress(`処理中 ${i + 1}/${pdfEntries.length}: ${filename}`);
+
+        try {
+          const arrayBuffer = await entry.async('arraybuffer');
+          const pdfFile = new File([arrayBuffer], filename, { type: 'application/pdf' });
+          const result = await parsePdf(pdfFile);
+
+          if (!result.year || !result.month) {
+            results.push({ filename, year: 0, month: 0, count: 0, amount: 0, items: 0, error: '年月を検出できませんでした' });
+            continue;
+          }
+
+          saveKijiItems(result.year, result.month, result.items);
+          const activeItems = result.items.filter(i => !i.excluded);
+          const count = activeItems.reduce((s, i) => s + i.count, 0);
+          const amount = activeItems.reduce((s, i) => s + i.amount, 0);
+          onSaveMonthKiji(result.year, result.month, count, amount);
+
+          results.push({ filename, year: result.year, month: result.month, count, amount, items: result.items.length });
+        } catch (err) {
+          results.push({ filename, year: 0, month: 0, count: 0, amount: 0, items: 0, error: String(err) });
+        }
+      }
+
+      setZipResults(results);
+      setZipProgress(`完了：${results.filter(r => !r.error).length}/${pdfEntries.length} 件取込`);
+      onRefresh();
+    } catch (err) {
+      setZipProgress(`エラー: ${err}`);
+    }
+    setZipProcessing(false);
+  };
 
   // New item entry state
   const [newCategory, setNewCategory] = useState<string>(CATEGORIES[0]);
@@ -871,6 +947,42 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
 
   return (
     <div className="kiji-section">
+
+      {/* ZIP一括取込 */}
+      {canEdit && (
+        <div className="zip-import-box">
+          <div className="zip-import-title">📦 ZIPファイルから一括取込</div>
+          <p className="zip-import-desc">複数月分のPDFをまとめたZIPファイルを選択すると、全月のデータを自動で取り込みます。</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <label className={`zip-import-btn ${zipProcessing ? 'disabled' : ''}`}>
+              {zipProcessing ? '処理中...' : '📂 ZIPを選択'}
+              <input type="file" accept=".zip" style={{ display: 'none' }} onChange={handleZipImport} disabled={zipProcessing} />
+            </label>
+            {zipProgress && <span className="zip-progress">{zipProgress}</span>}
+          </div>
+
+          {zipResults.length > 0 && (
+            <table className="kiji-table" style={{ marginTop: 12, fontSize: 11 }}>
+              <thead>
+                <tr><th>ファイル名</th><th>年月</th><th>品目数</th><th>本数</th><th>金額</th><th>状態</th></tr>
+              </thead>
+              <tbody>
+                {zipResults.map((r, i) => (
+                  <tr key={i} className={r.error ? 'excluded-row' : ''}>
+                    <td style={{ fontSize: 10 }}>{r.filename.replace(/.*\//, '')}</td>
+                    <td>{r.error ? '—' : `令和${r.year}年${r.month}月`}</td>
+                    <td className="num">{r.error ? '—' : r.items}</td>
+                    <td className="num">{r.error ? '—' : `${r.count}本`}</td>
+                    <td className="num">{r.error ? '—' : `¥${r.amount.toLocaleString()}`}</td>
+                    <td style={{ color: r.error ? '#c00' : '#080' }}>{r.error ?? '✓ 取込済'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
       <div className="manage-selectors">
         <label>年：</label>
         <select value={selYear} onChange={e => { setSelYear(Number(e.target.value)); setSaved(false); }}>

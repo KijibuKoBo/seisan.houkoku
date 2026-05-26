@@ -135,6 +135,43 @@
 }
 
 /* 品目管理 tab styles */
+.zip-import-box {
+  background: #f0f7ff;
+  border: 1px solid #b0d0f0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+.zip-import-title {
+  font-weight: bold;
+  font-size: 13px;
+  color: #1a3a5c;
+  margin-bottom: 6px;
+}
+.zip-import-desc {
+  font-size: 11px;
+  color: #555;
+  margin-bottom: 10px;
+}
+.zip-import-btn {
+  display: inline-block;
+  background: #1a3a5c;
+  color: white;
+  border-radius: 5px;
+  padding: 7px 16px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.zip-import-btn:hover { background: #2a5080; }
+.zip-import-btn.disabled { background: #999; cursor: not-allowed; }
+.zip-progress {
+  font-size: 12px;
+  color: #1a3a5c;
+  font-weight: 500;
+}
+
 .manage-selectors {
   display: flex;
   align-items: center;
