@@ -957,8 +957,13 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
                 <td>{item.code}</td>
                 <td>
                   {canEdit ? (
-                    <input className="manage-input" value={item.category}
-                      onChange={e => updateItem(idx, 'category', e.target.value)} />
+                    <select className="manage-input" value={item.category}
+                      onChange={e => updateItem(idx, 'category', e.target.value)}>
+                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      {!(CATEGORIES as readonly string[]).includes(item.category) && item.category && (
+                        <option value={item.category}>{item.category}</option>
+                      )}
+                    </select>
                   ) : item.category}
                 </td>
                 <td>
