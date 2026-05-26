@@ -44,38 +44,41 @@ async function extractRawItems(buffer: ArrayBuffer): Promise<RawTextItem[]> {
   return result;
 }
 
-// New format (with ロット番号 column): codes at x<75
-const COL_NEW = {
-  CODE_MAX: 75,
-  CAT_MIN: 75, CAT_MAX: 110,
-  NAME_MIN: 110, NAME_MAX: 280,
-  COUNT_MIN: 280, COUNT_MAX: 380,
-  PRICE_MIN: 380, PRICE_MAX: 460,
-  AMT_MIN: 460,
+// ─── PDF列レイアウト定義 ────────────────────────────────────────────────────────
+// A列: ロット番号  B列: カテゴリー  C列: 製品名  D列: 本数  E列: 単価  F列: 合計金額
+
+// 標準フォーマット（A列ロット番号あり）
+const COL = {
+  A_LOT_MAX:   75,           // A列: ロット番号
+  B_CAT_MIN:   75, B_CAT_MAX:  115,  // B列: カテゴリー
+  C_NAME_MIN: 115, C_NAME_MAX: 285,  // C列: 製品名
+  D_COUNT_MIN: 285, D_COUNT_MAX: 385, // D列: 本数
+  E_PRICE_MIN: 385, E_PRICE_MAX: 465, // E列: 単価
+  F_AMT_MIN:  465,           // F列: 合計金額
 } as const;
 
-// Old format (no ロット番号): prefix/cat at x75-100, name at x100+, count at x275+
+// 旧フォーマット（A列ロット番号なし、B列から始まる）
 const COL_OLD = {
-  CODE_MAX: 75,
-  CAT_MIN: 75, CAT_MAX: 100,
-  NAME_MIN: 100, NAME_MAX: 275,
-  COUNT_MIN: 275, COUNT_MAX: 380,
-  PRICE_MIN: 380, PRICE_MAX: 460,
-  AMT_MIN: 460,
+  A_LOT_MAX:   75,
+  B_CAT_MIN:   75, B_CAT_MAX:  105,
+  C_NAME_MIN: 105, C_NAME_MAX: 278,
+  D_COUNT_MIN: 278, D_COUNT_MAX: 385,
+  E_PRICE_MIN: 385, E_PRICE_MAX: 465,
+  F_AMT_MIN:  465,
 } as const;
 
-// New format has product codes at x<75; old format starts at x76+
-function detectFormat(items: RawTextItem[]): 'new' | 'old' {
+// A列（x<75）にデータがあれば標準フォーマット（ロット番号あり）
+function detectFormat(items: RawTextItem[]): 'standard' | 'old' {
   const ys = items.map(i => i.y);
   const yMax = Math.max(...ys), yMin = Math.min(...ys);
-  const data = items.filter(i => i.y < yMax - 20 && i.y > yMin + 20);
-  return data.some(i => i.x < 75) ? 'new' : 'old';
+  const dataRows = items.filter(i => i.y < yMax - 20 && i.y > yMin + 20);
+  return dataRows.some(i => i.x < COL.A_LOT_MAX) ? 'standard' : 'old';
 }
 
 function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: number): PdfParseResult {
-  const COL = detectFormat(rawItems) === 'new' ? COL_NEW : COL_OLD;
+  const layout = detectFormat(rawItems) === 'standard' ? COL : COL_OLD;
 
-  // Group by Y coordinate with 10px tolerance
+  // 同じY座標（10px以内）の文字を同一行にグループ化
   const rowMap = new Map<number, RawTextItem[]>();
   for (const item of rawItems) {
     const yBucket = Math.round(item.y / 10) * 10;
@@ -84,12 +87,12 @@ function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: num
     rowMap.set(yBucket, row);
   }
 
-  // Sort rows top-to-bottom (PDF y-axis is inverted)
+  // 行を上→下の順にソート（PDFのY軸は下が小さい）
   const rows = [...rowMap.entries()]
     .sort((a, b) => b[0] - a[0])
     .map(([, items]) => items.sort((a, b) => a.x - b.x));
 
-  // Extract title for year/month
+  // タイトル行から年月を抽出
   let year = ctxYear;
   let month = ctxMonth;
   const fullText = rows.map(r => r.map(i => i.str).join('')).join('\n');
@@ -99,39 +102,42 @@ function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: num
     month = month ?? parseInt(titleMatch[2]);
   }
 
-  // Extract items from rows
+  // 各行からA〜F列を読み取って品目リストを生成
   const items: KijiItem[] = [];
 
   for (const row of rows) {
-    const codeStr = row.filter(i => i.x < COL.CODE_MAX).map(i => i.str).join('');
-    const catStr = row.filter(i => i.x >= COL.CAT_MIN && i.x < COL.CAT_MAX).map(i => i.str).join('');
-    const nameStr = row.filter(i => i.x >= COL.NAME_MIN && i.x < COL.NAME_MAX).map(i => i.str).join('');
-    const countStr = row.filter(i => i.x >= COL.COUNT_MIN && i.x < COL.COUNT_MAX).map(i => i.str).join('');
-    const priceStr = row.filter(i => i.x >= COL.PRICE_MIN && i.x < COL.AMT_MIN).map(i => i.str).join('');
-    const amtStr = row.filter(i => i.x >= COL.AMT_MIN).map(i => i.str).join('');
+    // A列: ロット番号
+    const colA = row.filter(i => i.x < layout.A_LOT_MAX).map(i => i.str).join('');
+    // B列: カテゴリー
+    const colB = row.filter(i => i.x >= layout.B_CAT_MIN && i.x < layout.B_CAT_MAX).map(i => i.str).join('');
+    // C列: 製品名
+    const colC = row.filter(i => i.x >= layout.C_NAME_MIN && i.x < layout.C_NAME_MAX).map(i => i.str).join('');
+    // D列: 本数
+    const colD = row.filter(i => i.x >= layout.D_COUNT_MIN && i.x < layout.D_COUNT_MAX).map(i => i.str).join('');
+    // E列: 単価
+    const colE = row.filter(i => i.x >= layout.E_PRICE_MIN && i.x < layout.F_AMT_MIN).map(i => i.str).join('');
+    // F列: 合計金額
+    const colF = row.filter(i => i.x >= layout.F_AMT_MIN).map(i => i.str).join('');
 
-    const identity = codeStr + catStr + nameStr;
+    const identity = colA + colB + colC;
     if (!identity.trim()) continue;
-    // Skip title rows
     if (/令和|生産高/.test(identity)) continue;
-    // Skip pure total rows (no code/cat/name but has count/amount)
-    if (!identity.trim() && (countStr || amtStr)) continue;
 
-    const excluded = countStr.includes('本数に含めない') || nameStr.includes('本数に含めない');
-    const countMatch = countStr.replace(/\s/g, '').match(/^(\d+)/);
+    const excluded = colD.includes('本数に含めない') || colC.includes('本数に含めない');
+    const countMatch = colD.replace(/\s/g, '').match(/^(\d+)/);
     const count = countMatch ? parseInt(countMatch[1]) : 0;
-    const unitPrice = parseJpNum(priceStr);
-    const amount = parseJpNum(amtStr);
+    const unitPrice = parseJpNum(colE);
+    const amount = parseJpNum(colF);
 
-    // Must be a product row: either has a 4-digit code or a meaningful name
-    if (!/^\d{4}$/.test(codeStr) && !catStr && !nameStr) continue;
+    // 4桁コードかカテゴリーか製品名があれば品目行と判定
+    if (!/^\d{4}$/.test(colA) && !colB && !colC) continue;
 
     items.push({
       year: year ?? 0,
       month: month ?? 0,
-      code: codeStr,
-      category: catStr,
-      name: nameStr,
+      code: colA,
+      category: colB,
+      name: colC,
       count,
       unitPrice,
       amount,
@@ -139,12 +145,12 @@ function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: num
     });
   }
 
-  // Total count: last (\d+)本 in all text (grouped lines so "79" and "本" merge)
+  // 合計本数：全文中の最後の「N本」形式
   const groupedText = rows.map(r => r.map(i => i.str).join('')).join('\n');
   const allCounts = [...groupedText.matchAll(/(\d+)本/g)];
   const totalCount = allCounts.length > 0 ? parseInt(allCounts[allCounts.length - 1][1]) : 0;
 
-  // Total amount: last comma-formatted number >= 100,000
+  // 合計金額：最後の10万以上のカンマ区切り数値
   let totalAmount = 0;
   for (const row of rows) {
     const line = row.map(i => i.str).join('');
@@ -161,7 +167,6 @@ function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: num
 }
 
 function parseJpNum(s: string): number {
-  // Remove spaces first — PDF splits spaced numbers into separate items
   const m = s.replace(/\s/g, '').match(/[\d,]+/);
   if (!m) return 0;
   return parseInt(m[0].replace(/,/g, '')) || 0;

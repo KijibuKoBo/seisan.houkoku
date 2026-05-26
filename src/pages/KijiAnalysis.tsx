@@ -844,6 +844,15 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
     setSaved(false);
   };
 
+  const toggleExcluded = (idx: number) => {
+    setItems(prev => {
+      const next = prev.map((item, i) => i === idx ? { ...item, excluded: !item.excluded } : item);
+      recomputeTotals(next);
+      return next;
+    });
+    setSaved(false);
+  };
+
   const handleSave = () => {
     for (let i = 0; i < origItems.length; i++) {
       const orig = origItems[i];
@@ -938,7 +947,7 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
           <thead>
             <tr>
               <th>品番</th><th>カテゴリー</th><th>品名</th>
-              <th>本数</th><th>金額</th><th>除外</th>
+              <th>本数</th><th>金額</th><th>本数に含めない</th>
               {canEdit && <th></th>}
             </tr>
           </thead>
@@ -970,7 +979,16 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
                       onChange={e => updateItem(idx, 'amount', Number(e.target.value))} />
                   ) : (item.amount > 0 ? `¥${item.amount.toLocaleString()}` : '—')}
                 </td>
-                <td className="num">{item.excluded ? '✓' : ''}</td>
+                <td style={{ textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={item.excluded}
+                    onChange={() => canEdit && toggleExcluded(idx)}
+                    disabled={!canEdit}
+                    style={{ cursor: canEdit ? 'pointer' : 'default', width: 16, height: 16 }}
+                    title="チェックすると本数・金額の集計から除外されます"
+                  />
+                </td>
                 {canEdit && (
                   <td>
                     <button className="manage-del-btn" onClick={() => removeItem(idx)} title="削除">✕</button>
