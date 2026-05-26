@@ -45,38 +45,87 @@ async function extractRawItems(buffer: ArrayBuffer): Promise<RawTextItem[]> {
 }
 
 // ─── PDF列レイアウト定義 ────────────────────────────────────────────────────────
-// A列: ロット番号  B列: カテゴリー  C列: 製品名  D列: 本数  E列: 単価  F列: 合計金額
+// フォーマットA（標準）: A=ロット番号 / B=カテゴリー / C=製品名 / D=本数 / E=単価 / F=合計金額
+// フォーマットB（ロットなし）: B=カテゴリー / C=製品名 / F=合計金額 / D=本数 / E=単価
+//   ※ フォーマットBは合計金額が本数の左側に来る独自レイアウト
+// フォーマットC（旧形式）: B=カテゴリー / C=製品名 / D=本数 / E=単価 / F=合計金額
 
-// 標準フォーマット（A列ロット番号あり）
-const COL = {
-  A_LOT_MAX:   75,           // A列: ロット番号
-  B_CAT_MIN:   75, B_CAT_MAX:  115,  // B列: カテゴリー
-  C_NAME_MIN: 115, C_NAME_MAX: 285,  // C列: 製品名
-  D_COUNT_MIN: 285, D_COUNT_MAX: 385, // D列: 本数
-  E_PRICE_MIN: 385, E_PRICE_MAX: 465, // E列: 単価
-  F_AMT_MIN:  465,           // F列: 合計金額
+type Format = 'A' | 'B' | 'C';
+
+// フォーマットA: A列ロット番号あり（x<75）
+const COL_A = {
+  A_LOT_MAX:    75,
+  B_CAT_MIN:    75, B_CAT_MAX:   115,
+  C_NAME_MIN:  115, C_NAME_MAX:  285,
+  D_COUNT_MIN: 285, D_COUNT_MAX: 385,
+  E_PRICE_MIN: 385, E_PRICE_MAX: 465,
+  F_AMT_MIN:   465,
 } as const;
 
-// 旧フォーマット（A列ロット番号なし、B列から始まる）
-const COL_OLD = {
-  A_LOT_MAX:   75,
-  B_CAT_MIN:   75, B_CAT_MAX:  105,
-  C_NAME_MIN: 105, C_NAME_MAX: 278,
+// フォーマットC: 旧形式（カテゴリーx≈75）
+const COL_C = {
+  A_LOT_MAX:    75,
+  B_CAT_MIN:    75, B_CAT_MAX:   105,
+  C_NAME_MIN:  105, C_NAME_MAX:  278,
   D_COUNT_MIN: 278, D_COUNT_MAX: 385,
   E_PRICE_MIN: 385, E_PRICE_MAX: 465,
-  F_AMT_MIN:  465,
+  F_AMT_MIN:   465,
 } as const;
 
-// A列（x<75）にデータがあれば標準フォーマット（ロット番号あり）
-function detectFormat(items: RawTextItem[]): 'standard' | 'old' {
+// フォーマットB: ロットなし形式（カテゴリーx≈142、合計金額が本数の左側）
+const COL_B = {
+  B_CAT_MIN:   130, B_CAT_MAX:   158,
+  C_NAME_MIN:  158, C_NAME_MAX:  295,
+  F_AMT_MIN:   295, F_AMT_MAX:   342, // 合計金額（本数より左に位置）
+  D_COUNT_MIN: 342, D_COUNT_MAX: 460, // 本数（"N本"形式）
+  E_PRICE_MIN: 460,                   // 単価
+} as const;
+
+interface RowFields {
+  code: string;
+  category: string;
+  name: string;
+  count: string;
+  unitPrice: string;
+  amount: string;
+}
+
+function extractRowFields(row: RawTextItem[], format: Format): RowFields {
+  if (format === 'B') {
+    return {
+      code: '',
+      category: row.filter(i => i.x >= COL_B.B_CAT_MIN && i.x < COL_B.B_CAT_MAX).map(i => i.str).join(''),
+      name:     row.filter(i => i.x >= COL_B.C_NAME_MIN && i.x < COL_B.C_NAME_MAX).map(i => i.str).join(''),
+      amount:   row.filter(i => i.x >= COL_B.F_AMT_MIN  && i.x < COL_B.F_AMT_MAX).map(i => i.str).join(''),
+      count:    row.filter(i => i.x >= COL_B.D_COUNT_MIN && i.x < COL_B.D_COUNT_MAX).map(i => i.str).join(''),
+      unitPrice: row.filter(i => i.x >= COL_B.E_PRICE_MIN).map(i => i.str).join(''),
+    };
+  }
+
+  const layout = format === 'A' ? COL_A : COL_C;
+  return {
+    code:      row.filter(i => i.x < layout.A_LOT_MAX).map(i => i.str).join(''),
+    category:  row.filter(i => i.x >= layout.B_CAT_MIN  && i.x < layout.B_CAT_MAX).map(i => i.str).join(''),
+    name:      row.filter(i => i.x >= layout.C_NAME_MIN  && i.x < layout.C_NAME_MAX).map(i => i.str).join(''),
+    count:     row.filter(i => i.x >= layout.D_COUNT_MIN && i.x < layout.D_COUNT_MAX).map(i => i.str).join(''),
+    unitPrice: row.filter(i => i.x >= layout.E_PRICE_MIN && i.x < layout.F_AMT_MIN).map(i => i.str).join(''),
+    amount:    row.filter(i => i.x >= layout.F_AMT_MIN).map(i => i.str).join(''),
+  };
+}
+
+function detectFormat(items: RawTextItem[]): Format {
   const ys = items.map(i => i.y);
   const yMax = Math.max(...ys), yMin = Math.min(...ys);
+  // 上下余白（タイトル/フッター行）を除いたデータ行のみで判定
   const dataRows = items.filter(i => i.y < yMax - 20 && i.y > yMin + 20);
-  return dataRows.some(i => i.x < COL.A_LOT_MAX) ? 'standard' : 'old';
+
+  if (dataRows.some(i => i.x < COL_A.A_LOT_MAX)) return 'A';            // A列ロット番号あり
+  if (dataRows.some(i => i.x >= COL_B.B_CAT_MIN && i.x < COL_B.B_CAT_MAX)) return 'B'; // ロットなし形式
+  return 'C';                                                              // 旧形式
 }
 
 function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: number): PdfParseResult {
-  const layout = detectFormat(rawItems) === 'standard' ? COL : COL_OLD;
+  const format = detectFormat(rawItems);
 
   // 同じY座標（10px以内）の文字を同一行にグループ化
   const rowMap = new Map<number, RawTextItem[]>();
@@ -87,7 +136,7 @@ function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: num
     rowMap.set(yBucket, row);
   }
 
-  // 行を上→下の順にソート（PDFのY軸は下が小さい）
+  // 行を上→下の順にソート
   const rows = [...rowMap.entries()]
     .sort((a, b) => b[0] - a[0])
     .map(([, items]) => items.sort((a, b) => a.x - b.x));
@@ -96,9 +145,11 @@ function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: num
   let year = ctxYear;
   let month = ctxMonth;
   const fullText = rows.map(r => r.map(i => i.str).join('')).join('\n');
-  const titleMatch = fullText.match(/令和(\d+)年[　\s]*(\d+)月/);
+  const titleMatch = fullText.match(/令和(\d+)年[　\s]*(\d+)月/) ||
+                     fullText.match(/令和([一二三四五六七八九十]+)年[　\s]*(\d+)月/);
   if (titleMatch) {
-    year = year ?? parseInt(titleMatch[1]);
+    const reiwaNum = kanjiToNum(titleMatch[1]);
+    year = year ?? reiwaNum;
     month = month ?? parseInt(titleMatch[2]);
   }
 
@@ -106,38 +157,25 @@ function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: num
   const items: KijiItem[] = [];
 
   for (const row of rows) {
-    // A列: ロット番号
-    const colA = row.filter(i => i.x < layout.A_LOT_MAX).map(i => i.str).join('');
-    // B列: カテゴリー
-    const colB = row.filter(i => i.x >= layout.B_CAT_MIN && i.x < layout.B_CAT_MAX).map(i => i.str).join('');
-    // C列: 製品名
-    const colC = row.filter(i => i.x >= layout.C_NAME_MIN && i.x < layout.C_NAME_MAX).map(i => i.str).join('');
-    // D列: 本数
-    const colD = row.filter(i => i.x >= layout.D_COUNT_MIN && i.x < layout.D_COUNT_MAX).map(i => i.str).join('');
-    // E列: 単価
-    const colE = row.filter(i => i.x >= layout.E_PRICE_MIN && i.x < layout.F_AMT_MIN).map(i => i.str).join('');
-    // F列: 合計金額
-    const colF = row.filter(i => i.x >= layout.F_AMT_MIN).map(i => i.str).join('');
-
-    const identity = colA + colB + colC;
+    const f = extractRowFields(row, format);
+    const identity = f.code + f.category + f.name;
     if (!identity.trim()) continue;
     if (/令和|生産高/.test(identity)) continue;
 
-    const excluded = colD.includes('本数に含めない') || colC.includes('本数に含めない');
-    const countMatch = colD.replace(/\s/g, '').match(/^(\d+)/);
+    const excluded = f.count.includes('本数に含めない') || f.name.includes('本数に含めない');
+    const countMatch = f.count.replace(/\s/g, '').match(/^(\d+)/);
     const count = countMatch ? parseInt(countMatch[1]) : 0;
-    const unitPrice = parseJpNum(colE);
-    const amount = parseJpNum(colF);
+    const unitPrice = parseJpNum(f.unitPrice);
+    const amount = parseJpNum(f.amount);
 
-    // 4桁コードかカテゴリーか製品名があれば品目行と判定
-    if (!/^\d{4}$/.test(colA) && !colB && !colC) continue;
+    if (!/^\d{4}$/.test(f.code) && !f.category && !f.name) continue;
 
     items.push({
       year: year ?? 0,
       month: month ?? 0,
-      code: colA,
-      category: colB,
-      name: colC,
+      code: f.code,
+      category: f.category,
+      name: f.name,
       count,
       unitPrice,
       amount,
@@ -145,25 +183,27 @@ function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: num
     });
   }
 
-  // 合計本数：全文中の最後の「N本」形式
-  const groupedText = rows.map(r => r.map(i => i.str).join('')).join('\n');
-  const allCounts = [...groupedText.matchAll(/(\d+)本/g)];
-  const totalCount = allCounts.length > 0 ? parseInt(allCounts[allCounts.length - 1][1]) : 0;
-
-  // 合計金額：最後の10万以上のカンマ区切り数値
-  let totalAmount = 0;
-  for (const row of rows) {
-    const line = row.map(i => i.str).join('');
-    for (const m of line.matchAll(/\d{1,3}(?:,\d{3})+/g)) {
-      const n = parseInt(m[0].replace(/,/g, ''));
-      if (n >= 100000) totalAmount = n;
-    }
-  }
-  if (totalAmount === 0) {
-    totalAmount = items.filter(i => !i.excluded).reduce((s, i) => s + i.amount, 0);
-  }
+  // 合計本数・合計金額: PDFヘッダーではなくアイテムから直接集計（フォーマット依存しない）
+  const activeItems = items.filter(i => !i.excluded);
+  const totalCount = activeItems.reduce((s, i) => s + i.count, 0);
+  const totalAmount = activeItems.reduce((s, i) => s + i.amount, 0);
 
   return { year, month, totalCount, totalAmount, items };
+}
+
+// 漢数字→整数（令和元〜十年程度の範囲）
+function kanjiToNum(s: string): number {
+  const n = parseInt(s);
+  if (!isNaN(n)) return n;
+  const map: Record<string, number> = {
+    '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
+    '六': 6, '七': 7, '八': 8, '九': 9, '十': 10,
+    '元': 1,
+  };
+  if (s === '十') return 10;
+  if (s.startsWith('十')) return 10 + (map[s[1]] ?? 0);
+  if (s.endsWith('十')) return (map[s[0]] ?? 0) * 10;
+  return map[s] ?? 0;
 }
 
 function parseJpNum(s: string): number {
