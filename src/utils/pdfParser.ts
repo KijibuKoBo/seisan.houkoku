@@ -62,11 +62,11 @@ const COL_A = {
   F_AMT_MIN:   465,
 } as const;
 
-// フォーマットC: 旧形式（カテゴリーx≈75）
+// フォーマットC: 旧形式（カテゴリーx≈77-78、品名x≈104）
 const COL_C = {
   A_LOT_MAX:    75,
-  B_CAT_MIN:    75, B_CAT_MAX:   105,
-  C_NAME_MIN:  105, C_NAME_MAX:  278,
+  B_CAT_MIN:    75, B_CAT_MAX:   104, // x=77-102 のカテゴリー ("Ca","MP","仏","特")
+  C_NAME_MIN:  104, C_NAME_MAX:  278, // x=104+ の品名（4月形式はx=125、3月形式はx=104）
   D_COUNT_MIN: 278, D_COUNT_MAX: 385,
   E_PRICE_MIN: 385, E_PRICE_MAX: 465,
   F_AMT_MIN:   465,
