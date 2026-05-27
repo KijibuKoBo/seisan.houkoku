@@ -13,6 +13,7 @@ const CAT_STYLE: Record<string, { bg: string; color: string }> = {
   'Co':    { bg: '#b2dfdb', color: '#00695c' },
   'MP':    { bg: '#b3e5fc', color: '#01579b' },
   '仏壇':  { bg: '#e1bee7', color: '#6a1b9a' },
+  '仏':    { bg: '#e1bee7', color: '#6a1b9a' },
   'リリー':{ bg: '#f8bbd0', color: '#880e4f' },
   'PC':    { bg: '#bbdefb', color: '#1565c0' },
   '特注':  { bg: '#fff9c4', color: '#e65100' },
@@ -23,8 +24,12 @@ function catStyle(cat: string) {
   return CAT_STYLE[cat] ?? { bg: '#f0f0f0', color: '#555' };
 }
 
+const CAT_ABBR: Record<string, string> = {
+  '仏壇': '仏',
+  '特注': '特',
+};
 function catAbbr(cat: string) {
-  return cat === '仏壇' ? '仏' : cat;
+  return CAT_ABBR[cat] ?? cat;
 }
 
 // ── Donut chart ──────────────────────────────────────────────────────────────

@@ -268,11 +268,13 @@ function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: num
 
     if (!/^\d{4}$/.test(f.code) && !f.category && !f.name) continue;
 
+    const category = f.category === '仏' ? '仏壇' : f.category;
+
     items.push({
       year: year ?? 0,
       month: month ?? 0,
       code: f.code,
-      category: f.category,
+      category,
       name: f.name,
       count,
       unitPrice,
