@@ -48,14 +48,22 @@ export function getAvailableKijiYears(): number[] {
   return [...years].sort((a, b) => b - a);
 }
 
-// One-time migrations (run on startup)
+const CATEGORY_NORM: Record<string, string> = {
+  'Ca': 'Co', 'Continue': 'Co',
+  'Master Piece': 'MP', 'MasterPiece': 'MP',
+  'Petit.Continue': 'PC', 'Petit Continue': 'PC', 'Petit': 'PC',
+  '仏': '仏壇',
+  '特': '特注',
+};
+
+// One-time migration: normalize all category variants to canonical abbreviated forms
 export function migrateCaToCo(): void {
   const data = load();
   let changed = false;
   for (const ym of Object.keys(data)) {
     data[ym] = data[ym].map(item => {
-      if (item.category === 'Ca') { changed = true; return { ...item, category: 'Co' }; }
-      if (item.category === '仏')  { changed = true; return { ...item, category: '仏壇' }; }
+      const norm = CATEGORY_NORM[item.category];
+      if (norm) { changed = true; return { ...item, category: norm }; }
       return item;
     });
   }

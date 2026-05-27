@@ -13,24 +13,24 @@ const CAT_STYLE: Record<string, { bg: string; color: string }> = {
   'Co':    { bg: '#b2dfdb', color: '#00695c' },
   'MP':    { bg: '#b3e5fc', color: '#01579b' },
   '仏壇':  { bg: '#e1bee7', color: '#6a1b9a' },
-  '仏':    { bg: '#e1bee7', color: '#6a1b9a' },
   'リリー':{ bg: '#f8bbd0', color: '#880e4f' },
   'PC':    { bg: '#bbdefb', color: '#1565c0' },
   '特注':  { bg: '#fff9c4', color: '#e65100' },
   'その他':{ bg: '#f5f5f5', color: '#757575' },
 };
 
+const CAT_FULL: Record<string, string> = {
+  'Co': 'Continue',
+  'MP': 'Master Piece',
+  'PC': 'Petit.Continue',
+};
+
 function catStyle(cat: string) {
   return CAT_STYLE[cat] ?? { bg: '#f0f0f0', color: '#555' };
 }
 
-const CAT_ABBR: Record<string, string> = {
-  '仏壇': '仏',
-  '特注': '特',
-};
-function catAbbr(cat: string) {
-  return CAT_ABBR[cat] ?? cat;
-}
+function catAbbr(cat: string) { return cat; }
+function catFull(cat: string) { return CAT_FULL[cat] ?? cat; }
 
 // ── Donut chart ──────────────────────────────────────────────────────────────
 
@@ -64,7 +64,7 @@ function DonutChart({ cats, active }: { cats: string[]; active: KijiItem[] }) {
         {slices.filter(s => s.cnt > 0).map(s => (
           <div key={s.cat} className="kr-leg-row">
             <span className="kr-leg-dot" style={{ background: s.color }} />
-            <span className="kr-leg-name">{s.cat}</span>
+            <span className="kr-leg-name">{catFull(s.cat)}</span>
             <span className="kr-leg-val">{s.cnt}本</span>
             <span className="kr-leg-pct">({((s.cnt / total) * 100).toFixed(1)}%)</span>
           </div>

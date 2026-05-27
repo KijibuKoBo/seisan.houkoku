@@ -268,7 +268,7 @@ function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: num
 
     if (!/^\d{4}$/.test(f.code) && !f.category && !f.name) continue;
 
-    const category = f.category === '仏' ? '仏壇' : f.category;
+    const category = normalizeCategory(f.category);
 
     items.push({
       year: year ?? 0,
@@ -303,6 +303,19 @@ function kanjiToNum(s: string): number {
   if (s.endsWith('十')) return (map[s[0]] ?? 0) * 10;
   if (s.length === 2 && s[1] === '十') return (map[s[0]] ?? 1) * 10;
   return map[s] ?? 0;
+}
+
+const CATEGORY_NORM: Record<string, string> = {
+  'Ca': 'Co', 'Continue': 'Co',
+  'Master Piece': 'MP', 'MasterPiece': 'MP',
+  'Petit.Continue': 'PC', 'Petit Continue': 'PC', 'Petit': 'PC',
+  '仏': '仏壇',
+  '特': '特注',
+};
+
+function normalizeCategory(cat: string): string {
+  const t = cat.trim();
+  return CATEGORY_NORM[t] ?? t;
 }
 
 function parseJpNum(s: string): number {
