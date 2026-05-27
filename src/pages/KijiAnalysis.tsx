@@ -216,6 +216,7 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
   // 製品別タブの編集モード
   const [productEditMode, setProductEditMode] = useState(false);
   const [productEdits, setProductEdits] = useState<Record<string, { category: string; name: string }>>({});
+  const [productCatFilter, setProductCatFilter] = useState<string | null>(null);
 
   const handleProductEditSave = () => {
     for (const [key, edit] of Object.entries(productEdits)) {
@@ -395,6 +396,33 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
                     )}
                   </div>
                 </div>
+
+                {/* カテゴリーフィルター */}
+                {(() => {
+                  const cats = [...new Set(products.map(p => p.category || 'その他'))].sort();
+                  return cats.length > 1 && (
+                    <div className="kiji-year-filter" style={{ marginBottom: 8 }}>
+                      <span className="filter-label">カテゴリー：</span>
+                      <button
+                        className={`year-chip ${productCatFilter === null ? 'active' : ''}`}
+                        onClick={() => setProductCatFilter(null)}
+                      >すべて</button>
+                      {cats.map(c => (
+                        <button
+                          key={c}
+                          className={`year-chip ${productCatFilter === c ? 'active' : ''}`}
+                          onClick={() => setProductCatFilter(prev => prev === c ? null : c)}
+                        >{c}</button>
+                      ))}
+                      {productCatFilter && (
+                        <span className="filter-total">
+                          {products.filter(p => (p.category || 'その他') === productCatFilter).length}品目
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {productEditMode && (
                   <p className="prod-edit-hint">
                     カテゴリーや品名を変更して「変更を保存」を押すと、全月のデータが一括更新されます。同じカテゴリー＋品名になったものは統合されます。
@@ -408,7 +436,7 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map(p => {
+                    {products.filter(p => productCatFilter === null || (p.category || 'その他') === productCatFilter).map(p => {
                       const edit = productEdits[p.key];
                       const curCat  = edit?.category ?? p.category;
                       const curName = edit?.name     ?? p.name;
