@@ -144,6 +144,49 @@ function detectFormat(rawItems: RawTextItem[], fullText: string): Format {
   return 'C';
 }
 
+// フォーマットA/C: 本数列が他の列と異なるY座標帯にあるPDFをマージ
+// （データ行：品番+品名+単価+金額、別帯：本数のみ または 品名+本数）
+function mergeDetachedCounts(rows: RawTextItem[][], format: 'A' | 'C'): RawTextItem[][] {
+  const layout = format === 'A' ? COL_A : COL_C;
+
+  const hasAmt  = (row: RawTextItem[]) => row.some(i => i.x >= layout.F_AMT_MIN && /\d/.test(i.str));
+  const hasCnt  = (row: RawTextItem[]) => row.some(i => i.x >= layout.D_COUNT_MIN && i.x < layout.D_COUNT_MAX && /\d/.test(i.str));
+  const hasId   = (row: RawTextItem[]) => row.some(i =>
+    i.x < layout.A_LOT_MAX ||
+    (i.x >= layout.B_CAT_MIN && i.x < layout.B_CAT_MAX) ||
+    (i.x >= layout.C_NAME_MIN && i.x < layout.C_NAME_MAX)
+  );
+
+  // 検出：金額ありで本数なしのデータ行と、本数のみ行が両方3件以上あるか
+  let dataNoCount = 0;
+  let cntOnly = 0;
+  for (const row of rows) {
+    if (hasAmt(row) && hasId(row) && !hasCnt(row)) dataNoCount++;
+    if (hasCnt(row) && !hasAmt(row)) cntOnly++;
+  }
+  if (dataNoCount < 3 || cntOnly < 3) return rows;
+
+  const dataRows: RawTextItem[][] = [];
+  const cntRows:  RawTextItem[][] = [];
+  const otherRows: RawTextItem[][] = [];
+  for (const row of rows) {
+    if (hasAmt(row) && hasId(row))    dataRows.push(row);
+    else if (hasCnt(row) && !hasAmt(row)) cntRows.push(row);
+    else                              otherRows.push(row);
+  }
+
+  const merged = dataRows.map((dRow, i) => {
+    const cRow = cntRows[i];
+    if (!cRow) return dRow;
+    const countItems = cRow.filter(it => it.x >= layout.D_COUNT_MIN && it.x < layout.D_COUNT_MAX);
+    const dataHasName = dRow.some(it => it.x >= layout.C_NAME_MIN && it.x < layout.C_NAME_MAX);
+    const nameItems   = dataHasName ? [] : cRow.filter(it => it.x >= layout.C_NAME_MIN && it.x < layout.C_NAME_MAX);
+    return [...dRow, ...countItems, ...nameItems];
+  });
+
+  return [...merged, ...otherRows];
+}
+
 // フォーマットSで品名が次行に続く場合（名前なし行 + 名前だけの行）をマージ
 function mergeSplitRows(rows: RawTextItem[][]): RawTextItem[][] {
   const result: RawTextItem[][] = [];
@@ -192,6 +235,7 @@ function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: num
   if (format === 'S') rows = mergeSplitRows(rows);
 
   // タイトル行から年月を抽出（漢数字対応）
+  // ※ここより先でmergeDetachedCountsを呼ぶと年月抽出に影響するため先に抽出
   let year = ctxYear;
   let month = ctxMonth;
   const fullText = rows.map(r => r.map(i => i.str).join('')).join('\n');
@@ -200,6 +244,9 @@ function parseRawItems(rawItems: RawTextItem[], ctxYear?: number, ctxMonth?: num
     year  = year  ?? kanjiToNum(titleMatch[1]);
     month = month ?? parseInt(titleMatch[2]);
   }
+
+  // フォーマットA/Cで本数列が別Y座標帯にあるケースをマージ
+  if (format === 'A' || format === 'C') rows = mergeDetachedCounts(rows, format);
 
   // 各行からフィールドを抽出して品目リストを生成
   const items: KijiItem[] = [];
