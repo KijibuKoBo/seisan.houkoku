@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { KijiItem } from '../types';
 import './KijiReport.css';
 
@@ -128,6 +129,38 @@ function IconClipboard() {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function KijiReport({ year, month, items, onClose }: Props) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const handlePdfExport = async () => {
+    const el = modalRef.current;
+    if (!el) return;
+    setPdfLoading(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const jsPDF = (await import('jspdf')).default;
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#f0f4f8' });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pdfW = pdf.internal.pageSize.getWidth();
+      const pdfH = (canvas.height * pdfW) / canvas.width;
+      if (pdfH <= pdf.internal.pageSize.getHeight()) {
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+      } else {
+        const pageH = pdf.internal.pageSize.getHeight();
+        let y = 0;
+        while (y < pdfH) {
+          if (y > 0) pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, -y, pdfW, pdfH);
+          y += pageH;
+        }
+      }
+      pdf.save(`木地部生産高報告書_令和${year}年${month}月.pdf`);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   const active       = items.filter(i => !i.excluded);
   const totalCount   = active.reduce((s, i) => s + i.count,  0);
   const totalAmount  = active.reduce((s, i) => s + i.amount, 0);
@@ -141,7 +174,7 @@ export default function KijiReport({ year, month, items, onClose }: Props) {
 
   return (
     <div className="kr-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="kr-modal">
+      <div className="kr-modal" ref={modalRef}>
 
         {/* ── Header ── */}
         <div className="kr-header">
@@ -157,6 +190,9 @@ export default function KijiReport({ year, month, items, onClose }: Props) {
                 window.addEventListener('afterprint', () => document.body.classList.remove('kr-printing'), { once: true });
                 window.print();
               }}>🖨 印刷</button>
+              <button className="kr-print-btn" onClick={handlePdfExport} disabled={pdfLoading}>
+                {pdfLoading ? '生成中...' : '📄 PDF出力'}
+              </button>
               <button className="kr-close-btn" onClick={onClose}>✕ 閉じる</button>
             </div>
           </div>
@@ -217,42 +253,26 @@ export default function KijiReport({ year, month, items, onClose }: Props) {
                   </thead>
                   <tbody>
                     {cats.map(cat => {
-                      const catItems  = active.filter(i => (i.category || 'その他') === cat);
-                      const catCount  = catItems.reduce((s, i) => s + i.count,  0);
-                      const catAmount = catItems.reduce((s, i) => s + i.amount, 0);
+                      const catItems = active.filter(i => (i.category || 'その他') === cat);
                       const cs = catStyle(cat);
-                      return (
-                        <>
-                          {catItems.map((item, idx) => (
-                            <tr key={`${cat}-${idx}`} className="kr-data-row">
-                              <td className="kr-td-code">{item.code}</td>
-                              <td className="kr-td-cat">
-                                <span className="kr-cat-chip" style={{ background: cs.bg, color: cs.color }}>
-                                  {catAbbr(cat)}
-                                </span>
-                              </td>
-                              <td className="kr-td-name">{item.name}</td>
-                              <td className="kr-td-count">{item.count}本</td>
-                              <td className="kr-td-price">
-                                {item.unitPrice > 0 ? `¥${item.unitPrice.toLocaleString()}` : '—'}
-                              </td>
-                              <td className="kr-td-amount">
-                                {item.amount > 0 ? `¥${item.amount.toLocaleString()}` : '—'}
-                              </td>
-                            </tr>
-                          ))}
-                          <tr className="kr-subtotal-row">
-                            <td colSpan={3} className="kr-subtotal-label">
-                              {catAbbr(cat)} 小計
-                            </td>
-                            <td className="kr-subtotal-count">{catCount}本</td>
-                            <td />
-                            <td className="kr-subtotal-amount" style={{ color: cs.color }}>
-                              {catAmount > 0 ? `¥${catAmount.toLocaleString()}` : '—'}
-                            </td>
-                          </tr>
-                        </>
-                      );
+                      return catItems.map((item, idx) => (
+                        <tr key={`${cat}-${idx}`} className="kr-data-row">
+                          <td className="kr-td-code">{item.code}</td>
+                          <td className="kr-td-cat">
+                            <span className="kr-cat-chip" style={{ background: cs.bg, color: cs.color }}>
+                              {catAbbr(cat)}
+                            </span>
+                          </td>
+                          <td className="kr-td-name">{item.name}</td>
+                          <td className="kr-td-count">{item.count}本</td>
+                          <td className="kr-td-price">
+                            {item.unitPrice > 0 ? `¥${item.unitPrice.toLocaleString()}` : '—'}
+                          </td>
+                          <td className="kr-td-amount">
+                            {item.amount > 0 ? `¥${item.amount.toLocaleString()}` : '—'}
+                          </td>
+                        </tr>
+                      ));
                     })}
                   </tbody>
                   <tfoot>
