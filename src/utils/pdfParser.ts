@@ -61,9 +61,9 @@ const COL_S = {
 
 // A: ロット番号ありフォーマット
 const COL_A = {
-  A_LOT_MAX:    75,
-  B_CAT_MIN:    75, B_CAT_MAX:  115,
-  C_NAME_MIN:  115, C_NAME_MAX: 285,
+  A_LOT_MAX:    70,            // リリー(x=74)がコード列に入らないよう70に調整
+  B_CAT_MIN:    70, B_CAT_MAX: 108,  // 品名はx=110から始まる
+  C_NAME_MIN:  108, C_NAME_MAX: 285,
   D_COUNT_MIN: 285, D_COUNT_MAX: 385,
   E_PRICE_MIN: 385, E_PRICE_MAX: 465,
   F_AMT_MIN:   465,
