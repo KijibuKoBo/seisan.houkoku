@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { KijiItem, YearStore } from '../types';
 import { loadAllKijiItems, getAvailableKijiYears, loadKijiItems, saveKijiItems, renameKijiItems, renameKijiItemsByName } from '../utils/kijiStore';
-import { PRODUCT_LIST, CATEGORIES } from '../utils/productList';
+import { PRODUCT_LIST, CATEGORIES, CATEGORY_SHORT } from '../utils/productList';
 import KijiReport from '../components/KijiReport';
 import './KijiAnalysis.css';
 
@@ -316,7 +316,7 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
                   .map((p, i) => (
                     <HBar
                       key={p.key}
-                      label={`${i + 1}. ${p.code ? `[${p.code}] ` : ''}${p.category} ${p.name}`}
+                      label={`${i + 1}. ${p.code ? `[${p.code}] ` : ''}${CATEGORY_SHORT[p.category] ?? p.category} ${p.name}`}
                       value={rankBy === 'count' ? p.totalCount : p.totalAmount}
                       max={rankBy === 'count' ? maxCount : maxAmount}
                       color={COLORS[i % COLORS.length]}

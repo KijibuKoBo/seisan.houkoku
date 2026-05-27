@@ -48,13 +48,23 @@ export function getAvailableKijiYears(): number[] {
   return [...years].sort((a, b) => b - a);
 }
 
-// One-time migration: Ca → Co (run on startup)
-export function migrateCaToCo(): void {
+// カテゴリー名の旧略称→正式名称マイグレーション（起動時に実行）
+const CATEGORY_MIGRATION: Record<string, string> = {
+  'Ca': 'Continue',
+  'Co': 'Continue',
+  'MP': 'Master Piece',
+  'PC': 'Petit Continue',
+  '仏':  '仏壇',
+  '特':  '特注',
+};
+
+export function migrateCategories(): void {
   const data = load();
   let changed = false;
   for (const ym of Object.keys(data)) {
     data[ym] = data[ym].map(item => {
-      if (item.category === 'Ca') { changed = true; return { ...item, category: 'Co' }; }
+      const mapped = CATEGORY_MIGRATION[item.category];
+      if (mapped) { changed = true; return { ...item, category: mapped }; }
       return item;
     });
   }
