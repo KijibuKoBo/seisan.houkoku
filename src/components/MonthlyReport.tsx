@@ -13,7 +13,7 @@ const CHANNELS: { key: keyof SalesData; label: string; color: string; abbr: stri
   { key: 'takumi',   label: '匠',          color: '#5BA554', abbr: '匠' },
   { key: 'butsudan', label: '仏壇',        color: '#7B2D8B', abbr: '仏' },
   { key: 'ippanten', label: '一般店',      color: '#E67E22', abbr: '店' },
-  { key: 'showroom', label: 'ショールーム', color: '#E74C3C', abbr: 'SR' },
+  { key: 'showroom', label: '直販', color: '#E74C3C', abbr: 'SR' },
   { key: 'bukken',   label: 'その他',      color: '#95A5A6', abbr: '他' },
 ];
 

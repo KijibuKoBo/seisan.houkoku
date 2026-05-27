@@ -55,7 +55,7 @@ export default function MonthModal({ year, month, initial, prevMonth, prevYearMo
     ['takumi', '匠'],
     ['butsudan', '仏壇'],
     ['ippanten', '一般店'],
-    ['showroom', 'ショールーム'],
+    ['showroom', '直販'],
     ['bukken', 'その他'],
   ];
 

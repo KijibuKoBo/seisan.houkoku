@@ -28,7 +28,7 @@ const ROWS: RowDef[] = [
   { label: '　匠', indent: true, className: 'row-sales-sub', getter: GETTERS.takumi },
   { label: '　仏壇', indent: true, className: 'row-sales-sub', getter: GETTERS.butsudan },
   { label: '　一般店', indent: true, className: 'row-sales-sub', getter: GETTERS.ippanten },
-  { label: '　ショールーム', indent: true, className: 'row-sales-sub', getter: GETTERS.showroom },
+  { label: '　直販', indent: true, className: 'row-sales-sub', getter: GETTERS.showroom },
   { label: '　その他', indent: true, className: 'row-sales-sub', getter: GETTERS.bukken },
   { label: '木地（金額）', className: 'row-kiji', getter: GETTERS.kijiAmount },
   { label: '木地（本数）', className: 'row-kiji', getter: GETTERS.kijiCount, isCount: true },

@@ -72,7 +72,7 @@ export default function App() {
     // Build change summary
     const labels: Record<string, string> = {
       otsuka: '大塚', takumi: '匠', butsudan: '仏壇',
-      ippanten: '一般店', showroom: 'SR', bukken: 'その他',
+      ippanten: '一般店', showroom: '直販', bukken: 'その他',
     };
     const diffs: string[] = [];
     (Object.keys(labels) as (keyof typeof data.sales)[]).forEach(k => {
