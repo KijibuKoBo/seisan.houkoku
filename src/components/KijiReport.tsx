@@ -34,8 +34,13 @@ function catFull(cat: string) { return CAT_FULL[cat] ?? cat; }
 
 // ── Donut chart ──────────────────────────────────────────────────────────────
 
-function DonutChart({ cats, active }: { cats: string[]; active: KijiItem[] }) {
-  const total = active.reduce((s, i) => s + i.count, 0);
+function DonutChart({
+  cats, active, metric,
+}: { cats: string[]; active: KijiItem[]; metric: 'count' | 'amount' }) {
+  const valueOf = (i: KijiItem) => metric === 'count' ? i.count : i.amount;
+  const formatVal = (v: number) => metric === 'count' ? `${v}本` : `¥${v.toLocaleString()}`;
+
+  const total = active.reduce((s, i) => s + valueOf(i), 0);
   if (total === 0) return <div className="kr-chart-empty">データなし</div>;
 
   const R = 48; const CX = 58; const CY = 58;
@@ -43,7 +48,7 @@ function DonutChart({ cats, active }: { cats: string[]; active: KijiItem[] }) {
 
   const slices = cats.map(cat => {
     const cnt = active.filter(i => (i.category || 'その他') === cat)
-                      .reduce((s, i) => s + i.count, 0);
+                      .reduce((s, i) => s + valueOf(i), 0);
     const angle = (cnt / total) * 2 * Math.PI;
     const end = start + angle;
     const x1 = CX + R * Math.cos(start); const y1 = CY + R * Math.sin(start);
@@ -65,7 +70,7 @@ function DonutChart({ cats, active }: { cats: string[]; active: KijiItem[] }) {
           <div key={s.cat} className="kr-leg-row">
             <span className="kr-leg-dot" style={{ background: s.color }} />
             <span className="kr-leg-name">{catFull(s.cat)}</span>
-            <span className="kr-leg-val">{s.cnt}本</span>
+            <span className="kr-leg-val">{formatVal(s.cnt)}</span>
             <span className="kr-leg-pct">({((s.cnt / total) * 100).toFixed(1)}%)</span>
           </div>
         ))}
@@ -302,7 +307,9 @@ export default function KijiReport({ year, month, items, onClose }: Props) {
               <div className="kr-bottom-row">
                 <div className="kr-bottom-card">
                   <div className="kr-bottom-title">カテゴリー別 本数割合</div>
-                  <DonutChart cats={cats} active={active} />
+                  <DonutChart cats={cats} active={active} metric="count" />
+                  <div className="kr-bottom-title" style={{ marginTop: 16 }}>カテゴリー別 金額割合</div>
+                  <DonutChart cats={cats} active={active} metric="amount" />
                 </div>
                 <div className="kr-bottom-card">
                   <div className="kr-bottom-title">📋 備考</div>
