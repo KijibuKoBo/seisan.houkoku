@@ -53,7 +53,7 @@ const CATEGORY_MIGRATION: Record<string, string> = {
   'Ca': 'Continue',
   'Co': 'Continue',
   'MP': 'Master Piece',
-  'PC': 'Petit Continue',
+  'PC': 'Petit.Continue',
   '仏':  '仏壇',
   '特':  '特注',
 };
