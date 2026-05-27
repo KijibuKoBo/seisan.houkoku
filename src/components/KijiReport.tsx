@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { KijiItem } from '../types';
+import { CATEGORY_SHORT } from '../utils/productList';
 import './KijiReport.css';
 
 interface Props {
@@ -10,13 +11,13 @@ interface Props {
 }
 
 const CAT_STYLE: Record<string, { bg: string; color: string }> = {
-  'Co':    { bg: '#b2dfdb', color: '#00695c' },
-  'MP':    { bg: '#b3e5fc', color: '#01579b' },
-  '仏壇':  { bg: '#e1bee7', color: '#6a1b9a' },
-  'リリー':{ bg: '#f8bbd0', color: '#880e4f' },
-  'PC':    { bg: '#bbdefb', color: '#1565c0' },
-  '特注':  { bg: '#fff9c4', color: '#e65100' },
-  'その他':{ bg: '#f5f5f5', color: '#757575' },
+  'Continue':      { bg: '#b2dfdb', color: '#00695c' },
+  'Master Piece':  { bg: '#b3e5fc', color: '#01579b' },
+  '仏壇':          { bg: '#e1bee7', color: '#6a1b9a' },
+  'リリー':        { bg: '#f8bbd0', color: '#880e4f' },
+  'Petit.Continue':{ bg: '#bbdefb', color: '#1565c0' },
+  '特注':          { bg: '#fff9c4', color: '#e65100' },
+  'その他':        { bg: '#f5f5f5', color: '#757575' },
 };
 
 function catStyle(cat: string) {
@@ -24,7 +25,7 @@ function catStyle(cat: string) {
 }
 
 function catAbbr(cat: string) {
-  return cat === '仏壇' ? '仏' : cat;
+  return CATEGORY_SHORT[cat] ?? cat;
 }
 
 // ── Donut chart ──────────────────────────────────────────────────────────────
@@ -163,7 +164,7 @@ export default function KijiReport({ year, month, items, onClose }: Props) {
 
   const active       = items.filter(i => !i.excluded);
   const totalCount   = active.reduce((s, i) => s + i.count,  0);
-  const totalAmount  = active.reduce((s, i) => s + i.amount, 0);
+  const totalAmount  = items.reduce((s, i) => s + i.amount, 0);  // 本数に含まない品目も金額には含む
   const productCount = new Set(active.map(i => `${i.category}_${i.name}`)).size;
   const specialItems = active.filter(i => (i.category || 'その他') === '特注');
   const specialCount = new Set(specialItems.map(i => i.name)).size;

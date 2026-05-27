@@ -272,7 +272,7 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
         ))}
         <span className="filter-total">
           集計：{filteredItems.filter(i => !i.excluded).reduce((s, i) => s + i.count, 0).toLocaleString()}本 /
-          ¥{filteredItems.filter(i => !i.excluded).reduce((s, i) => s + i.amount, 0).toLocaleString()}
+          ¥{filteredItems.reduce((s, i) => s + i.amount, 0).toLocaleString()}
         </span>
       </div>
 
@@ -888,14 +888,14 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
     const md = store[selYear]?.[selMonth];
     const active = loaded.filter(i => !i.excluded);
     setTotalCount(md?.kiji.count ?? active.reduce((s, i) => s + i.count, 0));
-    setTotalAmount(md?.kiji.amount ?? active.reduce((s, i) => s + i.amount, 0));
+    setTotalAmount(md?.kiji.amount ?? loaded.reduce((s, i) => s + i.amount, 0));  // 本数に含まない品目も金額には含む
     setSaved(false);
   }, [selYear, selMonth]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const recomputeTotals = (updated: KijiItem[]) => {
     const active = updated.filter(i => !i.excluded);
     setTotalCount(active.reduce((s, i) => s + i.count, 0));
-    setTotalAmount(active.reduce((s, i) => s + i.amount, 0));
+    setTotalAmount(updated.reduce((s, i) => s + i.amount, 0));  // 本数に含まない品目も金額には含む
   };
 
   const updateItem = (idx: number, field: 'category' | 'name' | 'count' | 'amount', value: string | number) => {
