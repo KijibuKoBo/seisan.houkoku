@@ -168,9 +168,10 @@ export default function KijiReport({ year, month, items, onClose }: Props) {
   const specialItems = active.filter(i => (i.category || 'その他') === '特注');
   const specialCount = new Set(specialItems.map(i => i.name)).size;
 
-  const cats  = [...new Set(active.map(i => i.category || 'その他'))];
+  // 除外含む全カテゴリーで行を並べるが、ドーナツ・備考は active のみ
+  const cats  = [...new Set(items.map(i => i.category || 'その他'))];
   const today = new Date().toLocaleDateString('ja-JP');
-  const notes = genNotes(totalCount, totalAmount, cats, active);
+  const notes = genNotes(totalCount, totalAmount, [...new Set(active.map(i => i.category || 'その他'))], active);
 
   return (
     <div className="kr-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -233,7 +234,7 @@ export default function KijiReport({ year, month, items, onClose }: Props) {
             </div>
           </div>
 
-          {active.length === 0 ? (
+          {items.length === 0 ? (
             <div className="kr-empty">この月のデータがありません</div>
           ) : (
             <>
@@ -253,10 +254,10 @@ export default function KijiReport({ year, month, items, onClose }: Props) {
                   </thead>
                   <tbody>
                     {cats.map(cat => {
-                      const catItems = active.filter(i => (i.category || 'その他') === cat);
+                      const catItems = items.filter(i => (i.category || 'その他') === cat);
                       const cs = catStyle(cat);
                       return catItems.map((item, idx) => (
-                        <tr key={`${cat}-${idx}`} className="kr-data-row">
+                        <tr key={`${cat}-${idx}`} className={`kr-data-row${item.excluded ? ' kr-excluded-row' : ''}`}>
                           <td className="kr-td-code">{item.code}</td>
                           <td className="kr-td-cat">
                             <span className="kr-cat-chip" style={{ background: cs.bg, color: cs.color }}>
@@ -264,7 +265,11 @@ export default function KijiReport({ year, month, items, onClose }: Props) {
                             </span>
                           </td>
                           <td className="kr-td-name">{item.name}</td>
-                          <td className="kr-td-count">{item.count}本</td>
+                          <td className="kr-td-count">
+                            {item.excluded
+                              ? <><span style={{ color: '#aaa' }}>{item.count}本</span><span className="kr-excluded-note">本数に含まない</span></>
+                              : `${item.count}本`}
+                          </td>
                           <td className="kr-td-price">
                             {item.unitPrice > 0 ? `¥${item.unitPrice.toLocaleString()}` : '—'}
                           </td>

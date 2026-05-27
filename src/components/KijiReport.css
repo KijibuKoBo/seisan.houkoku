@@ -208,6 +208,19 @@
   white-space: nowrap;
 }
 
+/* Excluded rows */
+.kr-excluded-row td {
+  opacity: 0.55;
+}
+.kr-excluded-note {
+  display: inline-block;
+  font-size: 9px;
+  color: #999;
+  margin-left: 5px;
+  white-space: nowrap;
+  font-style: italic;
+}
+
 /* Subtotal rows */
 .kr-subtotal-row td {
   background: #eef2f8;
