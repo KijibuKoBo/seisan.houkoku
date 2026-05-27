@@ -33,8 +33,8 @@ export default function App() {
   const [showChangeLog, setShowChangeLog] = useState(false);
 
   useEffect(() => {
-    initDefaultUsers();
-    syncFromServer().finally(() => {
+    syncFromServer().finally(async () => {
+      await initDefaultUsers();
       setStore(loadStore());
       setSyncing(false);
     });
