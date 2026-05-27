@@ -10,7 +10,7 @@ interface Props {
 }
 
 const CAT_STYLE: Record<string, { bg: string; color: string }> = {
-  'Ca':    { bg: '#b2dfdb', color: '#00695c' },
+  'Co':    { bg: '#b2dfdb', color: '#00695c' },
   'MP':    { bg: '#b3e5fc', color: '#01579b' },
   '仏壇':  { bg: '#e1bee7', color: '#6a1b9a' },
   'リリー':{ bg: '#f8bbd0', color: '#880e4f' },

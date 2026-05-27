@@ -48,6 +48,19 @@ export function getAvailableKijiYears(): number[] {
   return [...years].sort((a, b) => b - a);
 }
 
+// One-time migration: Ca → Co (run on startup)
+export function migrateCaToCo(): void {
+  const data = load();
+  let changed = false;
+  for (const ym of Object.keys(data)) {
+    data[ym] = data[ym].map(item => {
+      if (item.category === 'Ca') { changed = true; return { ...item, category: 'Co' }; }
+      return item;
+    });
+  }
+  if (changed) save(data);
+}
+
 // Rename by exact code+category+name (used from ManageTab)
 export function renameKijiItems(
   oldCode: string, oldCategory: string, oldName: string,
