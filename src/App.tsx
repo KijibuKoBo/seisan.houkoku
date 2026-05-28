@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { YearStore, MonthData, AuthSession, KijiItem } from './types';
 import { loadStore, saveStore, setMonthData } from './utils/store';
 import { initDefaultUsers, getSession, logout } from './utils/auth';
-import { saveKijiItems, migrateCategories } from './utils/kijiStore';
+import { saveKijiItems, migrateCategories, pushKijiToServer } from './utils/kijiStore';
 migrateCategories();
 import { syncFromServer, logChange, getChangeLogs } from './utils/api';
 import { seedCostDatabaseIfEmpty } from './utils/costStore';
@@ -75,7 +75,10 @@ export default function App() {
     const next = setMonthData(store, selectedYear, editingMonth, data);
     setStore(next);
     saveStore(next);
-    if (kijiItems.length > 0) saveKijiItems(selectedYear, editingMonth, kijiItems);
+    if (kijiItems.length > 0) {
+      saveKijiItems(selectedYear, editingMonth, kijiItems);
+      pushKijiToServer();
+    }
 
     // Build change summary
     const labels: Record<string, string> = {

@@ -26,6 +26,12 @@ export function saveKijiItems(year: number, month: number, items: KijiItem[]): v
   save(data);
 }
 
+// ZIPインポート完了後など、全データを確実にサーバーへ送信する
+export async function pushKijiToServer(): Promise<void> {
+  const json = localStorage.getItem(KEY);
+  if (json) await apiSet(KEY, json);
+}
+
 function normalizeCategory(item: KijiItem): KijiItem {
   if (item.category) return item;
   return { ...item, category: 'その他' };

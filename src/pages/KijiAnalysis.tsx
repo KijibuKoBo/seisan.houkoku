@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { KijiItem, YearStore } from '../types';
-import { loadAllKijiItems, getAvailableKijiYears, loadKijiItems, saveKijiItems, renameKijiItems, renameKijiItemsByName } from '../utils/kijiStore';
+import { loadAllKijiItems, getAvailableKijiYears, loadKijiItems, saveKijiItems, renameKijiItems, renameKijiItemsByName, pushKijiToServer } from '../utils/kijiStore';
 import { CATEGORIES, CATEGORY_FULL } from '../utils/productList';
 import { loadCostDatabase } from '../utils/costStore';
 import KijiReport from '../components/KijiReport';
@@ -864,8 +864,10 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
       }
 
       setZipResults(results);
-      setZipProgress(`完了：${results.filter(r => !r.error).length}/${pdfEntries.length} 件取込`);
+      setZipProgress(`完了：${results.filter(r => !r.error).length}/${pdfEntries.length} 件取込（サーバー同期中...）`);
       onRefresh();
+      await pushKijiToServer();
+      setZipProgress(`完了：${results.filter(r => !r.error).length}/${pdfEntries.length} 件取込`);
     } catch (err) {
       setZipProgress(`エラー: ${err}`);
     }
