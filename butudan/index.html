@@ -601,7 +601,7 @@ function Schedule({lots,products}){
 
       {/* 凡例 */}
       <div className="flex gap-5 text-xs text-gray-600">
-        <span className="flex items-center gap-1.5"><span className="inline-block w-6 h-2 bg-amber-700 rounded-full"/>制作開始→木地上がり</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block w-6 h-2 bg-lime-500 rounded-full"/>制作開始→木地上がり</span>
         <span className="flex items-center gap-1.5"><span className="inline-block w-6 h-2 bg-blue-500 rounded-full"/>木地上がり→塗装上がり</span>
         <span className="flex items-center gap-1.5"><span className="inline-block w-6 h-2 bg-red-500 rounded-full"/>塗装上がり→出荷</span>
         <span className="flex items-center gap-1.5"><span className="inline-block w-0.5 h-4 bg-yellow-400"/>今日</span>
@@ -646,8 +646,8 @@ function Schedule({lots,products}){
                   {/* ===== ライン表示 ===== */}
                   {/* ① 制作開始→木地上がり（茶色） */}
                   {!isDone&&wP!=null?
-                    <Segment fromPct={sP} toPct={wP} color="bg-amber-700"/>:
-                    (!isDone&&<Segment fromPct={sP} toPct={shP} color="bg-amber-700"/>)
+                    <Segment fromPct={sP} toPct={wP} color="bg-lime-500"/>:
+                    (!isDone&&<Segment fromPct={sP} toPct={shP} color="bg-lime-500"/>)
                   }
                   {isDone&&<Segment fromPct={sP} toPct={shP} color="bg-gray-300"/>}
 
@@ -659,7 +659,7 @@ function Schedule({lots,products}){
                   {!isDone&&ptP!=null&&shP!=null&&<Segment fromPct={ptP} toPct={shP} color="bg-red-500"/>}
 
                   {/* マイルストーン点 */}
-                  {sP!=null&&<Dot atPct={sP} color="bg-amber-700" label={dl(lot.startDate)}/>}
+                  {sP!=null&&<Dot atPct={sP} color="bg-lime-500" label={dl(lot.startDate)}/>}
                   {wP!=null&&<Dot atPct={wP} color="bg-blue-500" label={dl(lot.woodDate)}/>}
                   {ptP!=null&&<Dot atPct={ptP} color="bg-blue-700" label={dl(lot.paintDate)}/>}
                   {shP!=null&&<Dot atPct={shP} color="bg-red-500" label={dl(lot.shipDate)}/>}
