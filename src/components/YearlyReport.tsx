@@ -69,15 +69,13 @@ export default function YearlyReport({ store, defaultYear, onClose }: Props) {
       const canvas = await html2canvas(el, { scale: 1.5, useCORS: true, backgroundColor: '#fff' });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      const pw = pdf.internal.pageSize.getWidth();
-      const ph = (canvas.height * pw) / canvas.width;
+      const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
-      let y = 0;
-      while (y < ph) {
-        if (y > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, -y, pw, ph);
-        y += pageH;
-      }
+      const aspect = canvas.width / canvas.height;
+      let w = pageW;
+      let h = pageW / aspect;
+      if (h > pageH) { h = pageH; w = pageH * aspect; }
+      pdf.addImage(imgData, 'PNG', (pageW - w) / 2, (pageH - h) / 2, w, h);
       return pdf.output('blob');
     } finally {
       hidden.forEach(e => { e.style.display = ''; });

@@ -156,19 +156,14 @@ export default function KijiReport({ defaultYear, defaultMonth, onClose }: Props
       const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#f0f4f8' });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const pdfW = pdf.internal.pageSize.getWidth();
-      const pdfH = (canvas.height * pdfW) / canvas.width;
-      if (pdfH <= pdf.internal.pageSize.getHeight()) {
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
-      } else {
-        const pageH = pdf.internal.pageSize.getHeight();
-        let y = 0;
-        while (y < pdfH) {
-          if (y > 0) pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, -y, pdfW, pdfH);
-          y += pageH;
-        }
-      }
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      // アスペクト比を保ちながら1枚に収める
+      const aspect = canvas.width / canvas.height;
+      let w = pageW;
+      let h = pageW / aspect;
+      if (h > pageH) { h = pageH; w = pageH * aspect; }
+      pdf.addImage(imgData, 'PNG', (pageW - w) / 2, (pageH - h) / 2, w, h);
       return pdf.output('blob');
     } finally {
       hidden.forEach(e => { e.style.display = ''; });
