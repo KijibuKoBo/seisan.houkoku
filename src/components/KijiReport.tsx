@@ -142,33 +142,60 @@ export default function KijiReport({ defaultYear, defaultMonth, onClose }: Props
 
   const modalRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [lineLoading, setLineLoading] = useState(false);
+
+  const fileName = `木地部生産高報告書_令和${year}年${month}月.pdf`;
+
+  const buildPdfBlob = async (): Promise<Blob> => {
+    const el = modalRef.current!;
+    const html2canvas = (await import('html2canvas')).default;
+    const jsPDF = (await import('jspdf')).default;
+    const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#f0f4f8' });
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pdfW = pdf.internal.pageSize.getWidth();
+    const pdfH = (canvas.height * pdfW) / canvas.width;
+    if (pdfH <= pdf.internal.pageSize.getHeight()) {
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+    } else {
+      const pageH = pdf.internal.pageSize.getHeight();
+      let y = 0;
+      while (y < pdfH) {
+        if (y > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, -y, pdfW, pdfH);
+        y += pageH;
+      }
+    }
+    return pdf.output('blob');
+  };
 
   const handlePdfExport = async () => {
-    const el = modalRef.current;
-    if (!el) return;
+    if (!modalRef.current) return;
     setPdfLoading(true);
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      const jsPDF = (await import('jspdf')).default;
-      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#f0f4f8' });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const pdfW = pdf.internal.pageSize.getWidth();
-      const pdfH = (canvas.height * pdfW) / canvas.width;
-      if (pdfH <= pdf.internal.pageSize.getHeight()) {
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
-      } else {
-        const pageH = pdf.internal.pageSize.getHeight();
-        let y = 0;
-        while (y < pdfH) {
-          if (y > 0) pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, -y, pdfW, pdfH);
-          y += pageH;
-        }
-      }
-      pdf.save(`木地部生産高報告書_令和${year}年${month}月.pdf`);
+      const blob = await buildPdfBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fileName; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
     } finally {
       setPdfLoading(false);
+    }
+  };
+
+  const handleLineShare = async () => {
+    if (!modalRef.current) return;
+    setLineLoading(true);
+    try {
+      const blob = await buildPdfBlob();
+      const file = new File([blob], fileName, { type: 'application/pdf' });
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: fileName });
+      } else {
+        alert('このブラウザはファイル共有に対応していません。\nPDF出力してLINEから送信してください。');
+      }
+    } finally {
+      setLineLoading(false);
     }
   };
 
@@ -214,6 +241,9 @@ export default function KijiReport({ defaultYear, defaultMonth, onClose }: Props
               }}>🖨 印刷</button>
               <button className="kr-print-btn" onClick={handlePdfExport} disabled={pdfLoading}>
                 {pdfLoading ? '生成中...' : '📄 PDF出力'}
+              </button>
+              <button className="kr-print-btn kr-line-btn" onClick={handleLineShare} disabled={lineLoading}>
+                {lineLoading ? '生成中...' : '📤 LINEで送る'}
               </button>
               <button className="kr-close-btn" onClick={onClose}>✕ 閉じる</button>
             </div>

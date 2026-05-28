@@ -90,6 +90,9 @@
 }
 .kr-print-btn:hover { background: rgba(255,255,255,0.25); }
 
+.kr-line-btn { background: rgba(0,185,0,0.22); border-color: rgba(0,220,0,0.45); }
+.kr-line-btn:hover { background: rgba(0,185,0,0.38); }
+
 .kr-close-btn {
   padding: 7px 14px;
   background: transparent;

@@ -51,33 +51,60 @@ export default function YearlyReport({ store, defaultYear, onClose }: Props) {
   const [year, setYear] = useState(defaultYear);
   const modalRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [lineLoading, setLineLoading] = useState(false);
 
   const prev = year - 1;
   const md  = (m: number) => store[year]?.[m];
   const pmd = (m: number) => store[prev]?.[m];
 
+  const fileName = `年次報告書_令和${year}年度.pdf`;
+
+  const buildPdfBlob = async (): Promise<Blob> => {
+    const el = modalRef.current!;
+    const html2canvas = (await import('html2canvas')).default;
+    const jsPDF = (await import('jspdf')).default;
+    const canvas = await html2canvas(el, { scale: 1.5, useCORS: true, backgroundColor: '#fff' });
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pw = pdf.internal.pageSize.getWidth();
+    const ph = (canvas.height * pw) / canvas.width;
+    const pageH = pdf.internal.pageSize.getHeight();
+    let y = 0;
+    while (y < ph) {
+      if (y > 0) pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, -y, pw, ph);
+      y += pageH;
+    }
+    return pdf.output('blob');
+  };
+
   const handlePdfExport = async () => {
-    const el = modalRef.current;
-    if (!el) return;
+    if (!modalRef.current) return;
     setPdfLoading(true);
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      const jsPDF = (await import('jspdf')).default;
-      const canvas = await html2canvas(el, { scale: 1.5, useCORS: true, backgroundColor: '#fff' });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      const pw = pdf.internal.pageSize.getWidth();
-      const ph = (canvas.height * pw) / canvas.width;
-      const pageH = pdf.internal.pageSize.getHeight();
-      let y = 0;
-      while (y < ph) {
-        if (y > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, -y, pw, ph);
-        y += pageH;
-      }
-      pdf.save(`年次報告書_令和${year}年度.pdf`);
+      const blob = await buildPdfBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fileName; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
     } finally {
       setPdfLoading(false);
+    }
+  };
+
+  const handleLineShare = async () => {
+    if (!modalRef.current) return;
+    setLineLoading(true);
+    try {
+      const blob = await buildPdfBlob();
+      const file = new File([blob], fileName, { type: 'application/pdf' });
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: fileName });
+      } else {
+        alert('このブラウザはファイル共有に対応していません。\nPDF出力してLINEから送信してください。');
+      }
+    } finally {
+      setLineLoading(false);
     }
   };
 
@@ -113,6 +140,9 @@ export default function YearlyReport({ store, defaultYear, onClose }: Props) {
               }}>🖨 印刷</button>
               <button className="yr-btn" onClick={handlePdfExport} disabled={pdfLoading}>
                 {pdfLoading ? '生成中...' : '📄 PDF出力'}
+              </button>
+              <button className="yr-btn yr-line" onClick={handleLineShare} disabled={lineLoading}>
+                {lineLoading ? '生成中...' : '📤 LINEで送る'}
               </button>
               <button className="yr-btn yr-close" onClick={onClose}>✕ 閉じる</button>
             </div>
