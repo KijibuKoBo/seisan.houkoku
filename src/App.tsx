@@ -11,7 +11,7 @@ import LoginPage from './components/LoginPage';
 import UserManager from './components/UserManager';
 import KijiAnalysis from './pages/KijiAnalysis';
 import KijiReport from './components/KijiReport';
-import MonthlyReport from './components/MonthlyReport';
+import YearlyReport from './components/YearlyReport';
 import ChangeLog from './components/ChangeLog';
 import './App.css';
 
@@ -30,7 +30,7 @@ export default function App() {
   const [editingMonth, setEditingMonth] = useState<number | null>(null);
   const [page, setPage] = useState<Page>('report');
   const [syncing, setSyncing] = useState(true);
-  const [showMonthlyReport, setShowMonthlyReport] = useState(false);
+  const [showYearlyReport, setShowYearlyReport] = useState(false);
   const [showKijiReport, setShowKijiReport] = useState(false);
   const [showChangeLog, setShowChangeLog] = useState(false);
 
@@ -174,10 +174,10 @@ export default function App() {
                 title="過去年を追加"
               >＋</button>
               <button
-                className="monthly-report-btn"
-                onClick={() => setShowMonthlyReport(true)}
+                className="yearly-report-btn"
+                onClick={() => setShowYearlyReport(true)}
                 style={{ marginLeft: 'auto' }}
-              >📋 月次報告書</button>
+              >📊 年次報告書</button>
             </div>
             <CompactSummary year={selectedYear} store={store} />
             <YearlyTable
@@ -198,11 +198,11 @@ export default function App() {
         <ChangeLog getChangeLogs={getChangeLogs} onClose={() => setShowChangeLog(false)} />
       )}
 
-      {showMonthlyReport && (
-        <MonthlyReport
+      {showYearlyReport && (
+        <YearlyReport
           store={store}
           defaultYear={selectedYear}
-          onClose={() => setShowMonthlyReport(false)}
+          onClose={() => setShowYearlyReport(false)}
         />
       )}
 
