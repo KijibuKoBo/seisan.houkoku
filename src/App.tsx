@@ -37,6 +37,7 @@ export default function App() {
   useEffect(() => {
     initDefaultUsers();
     syncFromServer().finally(() => {
+      migrateCategories(); // サーバー同期後にも正規化を実行
       setStore(loadStore());
       setSyncing(false);
     });

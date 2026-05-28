@@ -26,20 +26,26 @@ export function saveKijiItems(year: number, month: number, items: KijiItem[]): v
   save(data);
 }
 
+function normalizeCategory(item: KijiItem): KijiItem {
+  if (item.category) return item;
+  return { ...item, category: 'その他' };
+}
+
 export function loadKijiItems(year: number, month: number): KijiItem[] {
-  return load()[key(year, month)] ?? [];
+  return (load()[key(year, month)] ?? []).map(normalizeCategory);
 }
 
 export function loadAllKijiItems(): KijiItem[] {
   const data = load();
-  return Object.values(data).flat();
+  return Object.values(data).flat().map(normalizeCategory);
 }
 
 export function loadKijiItemsByYears(years: number[]): KijiItem[] {
   const data = load();
   return Object.entries(data)
     .filter(([k]) => years.includes(parseInt(k.split('_')[0])))
-    .flatMap(([, items]) => items);
+    .flatMap(([, items]) => items)
+    .map(normalizeCategory);
 }
 
 export function getAvailableKijiYears(): number[] {
