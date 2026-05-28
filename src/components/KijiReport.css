@@ -353,12 +353,15 @@
 @page { size: A4; margin: 9mm; }
 
 @media print {
-  .no-print { display: none !important; }
+  .no-print,
+  body.kr-printing .no-print { display: none !important; visibility: hidden !important; }
 
   /* Hide all page content; show only the kiji-report modal */
   body.kr-printing * { visibility: hidden; }
   body.kr-printing .kr-overlay,
   body.kr-printing .kr-overlay * { visibility: visible; }
+  body.kr-printing .kr-overlay .no-print,
+  body.kr-printing .kr-overlay .no-print * { visibility: hidden !important; display: none !important; }
 
   body.kr-printing .kr-overlay {
     position: fixed;

@@ -61,21 +61,27 @@ export default function YearlyReport({ store, defaultYear, onClose }: Props) {
 
   const buildPdfBlob = async (): Promise<Blob> => {
     const el = modalRef.current!;
-    const html2canvas = (await import('html2canvas')).default;
-    const jsPDF = (await import('jspdf')).default;
-    const canvas = await html2canvas(el, { scale: 1.5, useCORS: true, backgroundColor: '#fff' });
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const pw = pdf.internal.pageSize.getWidth();
-    const ph = (canvas.height * pw) / canvas.width;
-    const pageH = pdf.internal.pageSize.getHeight();
-    let y = 0;
-    while (y < ph) {
-      if (y > 0) pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, -y, pw, ph);
-      y += pageH;
+    const hidden = Array.from(el.querySelectorAll<HTMLElement>('.no-print'));
+    hidden.forEach(e => { e.style.display = 'none'; });
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const jsPDF = (await import('jspdf')).default;
+      const canvas = await html2canvas(el, { scale: 1.5, useCORS: true, backgroundColor: '#fff' });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pw = pdf.internal.pageSize.getWidth();
+      const ph = (canvas.height * pw) / canvas.width;
+      const pageH = pdf.internal.pageSize.getHeight();
+      let y = 0;
+      while (y < ph) {
+        if (y > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, -y, pw, ph);
+        y += pageH;
+      }
+      return pdf.output('blob');
+    } finally {
+      hidden.forEach(e => { e.style.display = ''; });
     }
-    return pdf.output('blob');
   };
 
   const handlePdfExport = async () => {

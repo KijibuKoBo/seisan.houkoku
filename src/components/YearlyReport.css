@@ -212,11 +212,14 @@
 @page { size: A4 landscape; margin: 8mm; }
 
 @media print {
-  .no-print { display: none !important; }
+  .no-print,
+  body.yr-printing .no-print { display: none !important; visibility: hidden !important; }
 
   body.yr-printing * { visibility: hidden; }
   body.yr-printing .yr-overlay,
   body.yr-printing .yr-overlay * { visibility: visible; }
+  body.yr-printing .yr-overlay .no-print,
+  body.yr-printing .yr-overlay .no-print * { visibility: hidden !important; display: none !important; }
 
   body.yr-printing .yr-overlay {
     position: fixed;
