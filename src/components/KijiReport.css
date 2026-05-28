@@ -39,6 +39,22 @@
   margin-bottom: 6px;
 }
 
+.kr-month-picker {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.kr-month-picker select {
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.kr-month-picker select option { background: #1a3a5c; }
+
 .kr-header-title {
   font-size: 24px;
   font-weight: bold;

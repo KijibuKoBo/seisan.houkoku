@@ -10,6 +10,7 @@ import MonthModal from './components/MonthModal';
 import LoginPage from './components/LoginPage';
 import UserManager from './components/UserManager';
 import KijiAnalysis from './pages/KijiAnalysis';
+import KijiReport from './components/KijiReport';
 import MonthlyReport from './components/MonthlyReport';
 import ChangeLog from './components/ChangeLog';
 import './App.css';
@@ -30,6 +31,7 @@ export default function App() {
   const [page, setPage] = useState<Page>('report');
   const [syncing, setSyncing] = useState(true);
   const [showMonthlyReport, setShowMonthlyReport] = useState(false);
+  const [showKijiReport, setShowKijiReport] = useState(false);
   const [showChangeLog, setShowChangeLog] = useState(false);
 
   useEffect(() => {
@@ -132,6 +134,9 @@ export default function App() {
             <button className={`nav-btn ${page === 'kiji' ? 'active' : ''}`} onClick={() => setPage('kiji')}>
               木地部分析
             </button>
+            <button className="nav-btn" onClick={() => setShowKijiReport(true)}>
+              木地部月次報告
+            </button>
             {canEdit && (
               <button className={`nav-btn ${page === 'users' ? 'active' : ''}`} onClick={() => setPage('users')}>
                 ユーザー管理
@@ -197,6 +202,14 @@ export default function App() {
           store={store}
           defaultYear={selectedYear}
           onClose={() => setShowMonthlyReport(false)}
+        />
+      )}
+
+      {showKijiReport && (
+        <KijiReport
+          defaultYear={selectedYear}
+          defaultMonth={new Date().getMonth() + 1}
+          onClose={() => setShowKijiReport(false)}
         />
       )}
 

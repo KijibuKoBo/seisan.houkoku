@@ -1,12 +1,12 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { KijiItem } from '../types';
 import { CATEGORY_FULL } from '../utils/productList';
+import { loadKijiItems, getAvailableKijiYears } from '../utils/kijiStore';
 import './KijiReport.css';
 
 interface Props {
-  year: number;
-  month: number;
-  items: KijiItem[];
+  defaultYear?: number;
+  defaultMonth?: number;
   onClose: () => void;
 }
 
@@ -130,7 +130,16 @@ function IconClipboard() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function KijiReport({ year, month, items, onClose }: Props) {
+export default function KijiReport({ defaultYear, defaultMonth, onClose }: Props) {
+  const currentReiwa = new Date().getFullYear() - 2018;
+  const availableYears = useMemo(() => {
+    const ky = getAvailableKijiYears();
+    return ky.length > 0 ? ky : [currentReiwa];
+  }, []);
+  const [year,  setYear]  = useState(defaultYear  ?? availableYears[0] ?? currentReiwa);
+  const [month, setMonth] = useState(defaultMonth ?? new Date().getMonth() + 1);
+  const items = useMemo(() => loadKijiItems(year, month), [year, month]);
+
   const modalRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
 
@@ -184,6 +193,16 @@ export default function KijiReport({ year, month, items, onClose }: Props) {
           <div className="kr-header-left">
             <div className="kr-header-sub">令和{year}年{month}月　木地部 生産高報告書</div>
             <div className="kr-header-title">木地部 生産高報告書</div>
+            <div className="kr-month-picker no-print">
+              <select value={year} onChange={e => setYear(Number(e.target.value))}>
+                {availableYears.map(y => <option key={y} value={y}>令和{y}年</option>)}
+              </select>
+              <select value={month} onChange={e => setMonth(Number(e.target.value))}>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(m =>
+                  <option key={m} value={m}>{m}月</option>
+                )}
+              </select>
+            </div>
           </div>
           <div className="kr-header-right">
             <div className="kr-header-date">作成日：{today}</div>

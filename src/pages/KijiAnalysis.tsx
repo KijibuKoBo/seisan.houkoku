@@ -888,7 +888,7 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
     const md = store[selYear]?.[selMonth];
     const active = loaded.filter(i => !i.excluded);
     setTotalCount(md?.kiji.count ?? active.reduce((s, i) => s + i.count, 0));
-    setTotalAmount(md?.kiji.amount ?? loaded.reduce((s, i) => s + i.amount, 0));  // 本数に含まない品目も金額には含む
+    setTotalAmount(loaded.reduce((s, i) => s + i.amount, 0));
     setSaved(false);
   }, [selYear, selMonth]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1172,9 +1172,8 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
 
       {showReport && (
         <KijiReport
-          year={selYear}
-          month={selMonth}
-          items={items}
+          defaultYear={selYear}
+          defaultMonth={selMonth}
           onClose={() => setShowReport(false)}
         />
       )}
