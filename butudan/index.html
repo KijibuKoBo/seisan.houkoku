@@ -797,7 +797,7 @@ function LotModal({lot,products,onSave,onClose}){
 }
 
 // ===== 改善追加／編集モーダル =====
-function IssueModal({issue,lotId,lots,products,parts,onSave,onClose}){
+function IssueModal({issue,lotId,lots,products,parts,onSave,onDelete,onClose}){
   const targetLotId=issue?.lotId||lotId;
   const lot=lots.find(l=>l.id===targetLotId);
   const pr=lot?products.find(p=>p.id===lot.productId):null;
@@ -809,6 +809,7 @@ function IssueModal({issue,lotId,lots,products,parts,onSave,onClose}){
     assignee:issue?.assignee||lot?.assignee||'',
   });
   const [saving,setSaving]=useState(false);
+  const [deleting,setDeleting]=useState(false);
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
   return(
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -840,6 +841,9 @@ function IssueModal({issue,lotId,lots,products,parts,onSave,onClose}){
           <div><label className="text-xs text-gray-600 block mb-1">担当者</label><input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.assignee} onChange={e=>set('assignee',e.target.value)}/></div>
         </div>
         <div className="flex gap-3 mt-5">
+          {issue&&onDelete&&(
+            <button onClick={async()=>{if(deleting||!window.confirm('この記録を削除しますか？'))return;setDeleting(true);await onDelete(issue.id);setDeleting(false);}} disabled={deleting} className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm disabled:opacity-50 hover:bg-red-600">{deleting?'削除中...':'🗑 削除'}</button>
+          )}
           <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm">キャンセル</button>
           <button onClick={async()=>{if(saving)return;setSaving(true);await onSave(form);setSaving(false);}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
         </div>
@@ -916,6 +920,11 @@ function App(){
     setIssues(p=>p.map(i=>i.id===editingIssue.id?{...i,...data}:i));
     setEditingIssue(null);
   }
+  async function handleDeleteIssue(id){
+    await api.delete(`api/issues.php?id=${encodeURIComponent(id)}`);
+    setIssues(p=>p.filter(i=>i.id!==id));
+    setEditingIssue(null);
+  }
 
   // Product CRUD
   async function handleSaveProduct(editProd,data){
@@ -967,7 +976,7 @@ function App(){
       {/* 改善追加 */}
       {addIssueForLot&&<IssueModal lotId={addIssueForLot} lots={lots} products={products} parts={parts} onSave={handleAddIssue} onClose={()=>setAddIssueForLot(null)}/>}
       {/* 改善編集 */}
-      {editingIssue&&<IssueModal issue={editingIssue} lots={lots} products={products} parts={parts} onSave={handleEditIssue} onClose={()=>setEditingIssue(null)}/>}
+      {editingIssue&&<IssueModal issue={editingIssue} lots={lots} products={products} parts={parts} onSave={handleEditIssue} onDelete={handleDeleteIssue} onClose={()=>setEditingIssue(null)}/>}
     </div>
   );
 }
