@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>松永工房 生産管理</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Hiragino Sans', 'Meiryo', 'Yu Gothic', sans-serif; }
+</style>
+</head>
+<body class="bg-gray-100">
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const TODAY = new Date().toISOString().split('T')[0];
+const DESTINATIONS  = ['丸喜','現代仏壇','—','その他'];
+const ASSIGNEES     = ['石原','新貝','保崎','鈴木','国松','福間'];
+const LOT_STATUSES  = ['制作中','出荷済','完成'];
+const ISSUE_STATUSES= ['調査中','解決済','未対応'];
+const ADMIN_EMAIL   = 'kijibu.kobo@gmail.com';
+
+// ===== API helper =====
+const api = {
+  get:    async (url)       => { const r=await fetch(url);           if(r.status===401)throw{code:'UNAUTHORIZED'}; return r.json(); },
+  post:   async (url,data)  => { const r=await fetch(url,{method:'POST', headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}); if(r.status===401)throw{code:'UNAUTHORIZED'}; return r.json(); },
+  put:    async (url,data)  => { const r=await fetch(url,{method:'PUT',  headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}); if(r.status===401)throw{code:'UNAUTHORIZED'}; return r.json(); },
+  delete: async (url)       => { const r=await fetch(url,{method:'DELETE'}); if(r.status===401)throw{code:'UNAUTHORIZED'}; return r.json(); },
+};
+
+function fmtDate(d){ if(!d)return'—'; const dt=new Date(d); return`${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}`; }
+function isOverdue(lot){ return lot.status==='制作中'&&lot.shipDate&&lot.shipDate<TODAY; }
+
+// ===== Badge =====
+function Badge({type}){
+  const map={'制作中':'bg-blue-100 text-blue-700','出荷済':'bg-gray-200 text-gray-600','完成':'bg-green-100 text-green-700','調査中':'bg-yellow-100 text-yellow-700','解決済':'bg-green-100 text-green-700','未対応':'bg-red-100 text-red-700','重要変更':'bg-orange-100 text-orange-700','再発防止済':'bg-teal-100 text-teal-700'};
+  if(type&&type.includes('件未解決'))return<span className="px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">{type}</span>;
+  return<span className={`px-2 py-0.5 rounded text-xs font-medium ${map[type]||'bg-gray-100 text-gray-600'}`}>{type}</span>;
+}
+
+// ===== ログイン画面 =====
+function LoginPage({onLogin}){
+  const [email,setEmail]=useState('');
+  const [pass,setPass]=useState('');
+  const [err,setErr]=useState('');
+  const [loading,setLoading]=useState(false);
+  async function submit(e){
+    e.preventDefault(); setErr(''); setLoading(true);
+    try{
+      const r=await fetch('api/auth.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
+      const d=await r.json();
+      if(r.ok) onLogin(d.user); else setErr(d.error||'ログインに失敗しました');
+    }catch{setErr('通信エラーが発生しました');}
+    setLoading(false);
+  }
+  return(
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 w-80">
+        <div className="text-center mb-7">
+          <div className="text-4xl mb-2">⊡</div>
+          <h1 className="font-bold text-xl">松永工房 生産管理</h1>
+          <div className="text-sm text-gray-400 mt-1">ロット管理システム</div>
+        </div>
+        <form onSubmit={submit} className="space-y-4">
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">メールアドレス</label>
+            <input type="email" required className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400"
+              value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com"/>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">パスワード</label>
+            <input type="password" required className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400"
+              value={pass} onChange={e=>setPass(e.target.value)}/>
+          </div>
+          {err&&<div className="text-red-500 text-xs bg-red-50 px-3 py-2 rounded-lg">{err}</div>}
+          <button type="submit" disabled={loading}
+            className="w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-gray-700 transition-colors">
+            {loading?'ログイン中...':'ログイン'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ===== サイドバー =====
+const NAV=[
+  {id:'dashboard',label:'ダッシュボード',icon:'▦'},
+  {id:'lots',     label:'ロット管理',    icon:'◈'},
+  {id:'issues',   label:'問題・改善履歴',icon:'△'},
+  {id:'products', label:'製品マスタ',    icon:'⬡'},
+  {id:'schedule', label:'スケジュール表',icon:'▦'},
+  {id:'settings', label:'設定',          icon:'⚙'},
+];
+function Sidebar({page,onNav,user,onLogout}){
+  return(
+    <div className="w-52 min-h-screen bg-gray-900 text-white flex flex-col flex-shrink-0">
+      <div className="p-4 flex items-center gap-2 border-b border-gray-700">
+        <span className="text-xl">⊡</span><span className="font-bold">ロット管理</span>
+      </div>
+      <nav className="flex-1 p-2 space-y-0.5">
+        {NAV.map(n=>(
+          <button key={n.id} onClick={()=>onNav(n.id)}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${page===n.id?'bg-gray-700 text-white':'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>
+            <span>{n.icon}</span><span>{n.label}</span>
+          </button>
+        ))}
+      </nav>
+      <div className="p-3 border-t border-gray-700">
+        <div className="text-xs text-gray-400 mb-1 truncate">{user?.name}</div>
+        <div className="text-xs text-gray-500 truncate mb-2">{user?.email}</div>
+        <button onClick={onLogout} className="w-full text-xs text-gray-400 hover:text-white py-1 text-left">ログアウト →</button>
+      </div>
+    </div>
+  );
+}
+
+// ===== ダッシュボード =====
+function Dashboard({lots,products,issues,onNav,onLot,onIssueFilter}){
+  const active=lots.filter(l=>l.status==='制作中');
+  const unresolved=issues.filter(i=>i.status!=='解決済');
+  const important=issues.filter(i=>i.isImportant);
+  const prevented=issues.filter(i=>i.isRecurrencePrevented);
+
+  const months=[];
+  for(let i=5;i>=0;i--){const d=new Date(TODAY);d.setMonth(d.getMonth()-i);months.push({label:`${d.getMonth()+1}月`,y:d.getFullYear(),m:d.getMonth()});}
+  const monthlyCnt=months.map(mm=>({label:mm.label,cnt:issues.filter(i=>{const d=new Date(i.date);return d.getFullYear()===mm.y&&d.getMonth()===mm.m;}).length}));
+  const maxM=Math.max(...monthlyCnt.map(x=>x.cnt),1);
+  const prodCnt=products.map(p=>({name:p.name,cnt:issues.filter(i=>i.productId===p.id).length})).filter(x=>x.cnt>0).sort((a,b)=>b.cnt-a.cnt);
+  const maxP=Math.max(...prodCnt.map(x=>x.cnt),1);
+  const recent=[...issues].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
+
+  return(
+    <div className="p-6 space-y-5">
+      <h1 className="text-2xl font-bold">ダッシュボード</h1>
+
+      {/* 進行中ロット */}
+      <div className="bg-white rounded-xl shadow-sm p-5">
+        <div className="flex justify-between items-center mb-3">
+          <span className="font-semibold">◈ 進行中のロット</span>
+          <button onClick={()=>onNav('lots')} className="text-sm text-blue-600 hover:underline">すべて表示 →</button>
+        </div>
+        {active.length===0&&<div className="text-gray-400 text-sm py-2">なし</div>}
+        <div className="space-y-2">
+          {active.map(lot=>{
+            const pr=products.find(p=>p.id===lot.productId);
+            const unres=issues.filter(i=>i.lotId===lot.id&&i.status!=='解決済');
+            const overdue=isOverdue(lot);
+            return(
+              <div key={lot.id} onClick={()=>onLot(lot.id)}
+                className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${overdue?'bg-red-50 border-red-200 hover:bg-red-100':'border-gray-100 hover:bg-gray-50'}`}>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{pr?.name}</span>
+                    {overdue&&<span className="text-xs text-red-600 font-medium">⚠ 出荷期限超過</span>}
+                  </div>
+                  <div className={`text-sm ${overdue?'text-red-500':'text-gray-400'}`}>ロット {lot.lotNumber} · 📦 {fmtDate(lot.shipDate)}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {unres.length>0&&<Badge type={`${unres.length}件未解決`}/>}
+                  <span className="text-gray-400">›</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* サマリカード（クリック可能） */}
+      <div className="grid grid-cols-4 gap-4">
+        {[
+          {label:'未解決の改善点',val:unresolved.length,icon:'↗',color:'text-orange-500',action:()=>onIssueFilter('未解決')},
+          {label:'重要変更事項',  val:important.length, icon:'✓',color:'text-blue-500', action:()=>onIssueFilter('重要変更')},
+          {label:'再発防止済み',  val:prevented.length, icon:'✓',color:'text-green-500',action:()=>onIssueFilter('再発防止済')},
+          {label:'登録ロット数',  val:lots.length,      icon:'◈',color:'text-gray-700', action:()=>onNav('lots')},
+        ].map(s=>(
+          <div key={s.label} onClick={s.action}
+            className="bg-white rounded-xl shadow-sm p-5 cursor-pointer hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-1 text-gray-500 text-xs mb-1"><span className={s.color}>{s.icon}</span>{s.label}</div>
+            <div className="text-3xl font-bold">{s.val}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* グラフ */}
+      <div className="grid grid-cols-2 gap-5">
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <div className="font-semibold mb-4 text-sm">月別記録件数</div>
+          <div className="flex items-end gap-1 h-28">
+            {monthlyCnt.map((m,i)=>(
+              <div key={i} className="flex flex-col items-center flex-1">
+                <div className="w-full flex justify-center mb-1">
+                  <div className="w-7 bg-blue-500 rounded-t" style={{height:`${Math.max((m.cnt/maxM)*96,m.cnt>0?4:0)}px`}}/>
+                </div>
+                <div className="text-xs text-gray-500">{m.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <div className="font-semibold mb-4 text-sm">製品別記録件数</div>
+          <div className="space-y-2">
+            {prodCnt.map((p,i)=>(
+              <div key={i} className="flex items-center gap-2">
+                <div className="w-24 text-xs text-gray-600 text-right truncate">{p.name}</div>
+                <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
+                  <div className="h-full bg-teal-500 rounded-full" style={{width:`${(p.cnt/maxP)*100}%`}}/>
+                </div>
+                <div className="text-xs w-4 text-gray-600">{p.cnt}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 最新記録（クリックで一覧へ） */}
+      <div className="bg-white rounded-xl shadow-sm p-5">
+        <div className="flex justify-between items-center mb-3">
+          <span className="font-semibold text-sm">最新の改善・注意記録</span>
+          <button onClick={()=>onIssueFilter('all')} className="text-sm text-blue-600 hover:underline">すべて表示 →</button>
+        </div>
+        <div className="divide-y divide-gray-50">
+          {recent.map(iss=>{
+            const pr=products.find(p=>p.id===iss.productId);
+            return(
+              <div key={iss.id} onClick={()=>onIssueFilter('all')}
+                className="py-3 flex items-start justify-between gap-3 cursor-pointer hover:bg-gray-50 -mx-2 px-2 rounded">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{iss.description||'（内容なし）'}</div>
+                  <div className="text-xs text-gray-400">{pr?.name} / {iss.lotNumber} · {iss.partId}</div>
+                </div>
+                <div className="flex gap-1 flex-shrink-0">
+                  <Badge type={iss.status}/>{iss.isImportant&&<Badge type="重要変更"/>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== ロット一覧 =====
+function LotList({lots,products,issues,onLot,onAddLot}){
+  const [search,setSearch]=useState('');
+  const [filter,setFilter]=useState('すべて');
+  const filtered=lots.filter(l=>{
+    const pr=products.find(p=>p.id===l.productId);
+    const ok=filter==='すべて'||l.status===filter;
+    const srch=!search||[pr?.name,String(l.lotNumber),l.destination,l.assignee].some(s=>(s||'').includes(search));
+    return ok&&srch;
+  }).sort((a,b)=>b.lotNumber-a.lotNumber);
+  return(
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-2xl font-bold">ロット管理</h1>
+        <button onClick={onAddLot} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-700">+ ロット追加</button>
+      </div>
+      <div className="flex gap-3 mb-4">
+        <input className="flex-1 border border-gray-200 rounded-lg px-4 py-2 text-sm" placeholder="製品名・ロット番号・出荷先・担当者で検索..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <select value={filter} onChange={e=>setFilter(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+          <option>すべて</option>{LOT_STATUSES.map(s=><option key={s}>{s}</option>)}
+        </select>
+      </div>
+      <div className="space-y-3">
+        {filtered.map(lot=>{
+          const pr=products.find(p=>p.id===lot.productId);
+          const unres=issues.filter(i=>i.lotId===lot.id&&i.status!=='解決済');
+          const overdue=isOverdue(lot);
+          return(
+            <div key={lot.id} onClick={()=>onLot(lot.id)}
+              className={`rounded-xl shadow-sm p-4 flex items-center justify-between cursor-pointer hover:shadow-md transition-shadow ${overdue?'bg-red-50':'bg-white'}`}>
+              <div>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="font-bold text-lg">{lot.lotNumber}</span><Badge type={lot.status}/>
+                  {overdue&&<span className="text-xs text-red-600 font-medium">⚠ 期限超過</span>}
+                </div>
+                <div className="text-sm text-gray-600">{pr?.name}・{lot.destination}・{lot.assignee}</div>
+                <div className="text-xs text-gray-400">出荷日: {fmtDate(lot.shipDate)}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                {unres.length>0&&<Badge type={`${unres.length}件未解決`}/>}
+                <span className="text-gray-300">›</span>
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length===0&&<div className="text-center text-gray-400 py-12">該当するロットはありません</div>}
+      </div>
+    </div>
+  );
+}
+
+// ===== ロット詳細 =====
+function LotDetail({lot,products,issues,onBack,onAddIssue,onEditLot,onEditIssue}){
+  const [tab,setTab]=useState('issues');
+  const pr=products.find(p=>p.id===lot.productId);
+  const lotIssues=issues.filter(i=>i.lotId===lot.id).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const overdue=isOverdue(lot);
+  return(
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-5">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="text-gray-400 hover:text-gray-700 text-lg">←</button>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold">{lot.lotNumber}</span><Badge type={lot.status}/>
+              {overdue&&<span className="text-xs text-red-600 font-medium">⚠ 出荷期限超過</span>}
+            </div>
+            <div className="text-gray-500 text-sm">{pr?.name}</div>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">🖨 印刷</button>
+          <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">↓ PDF保存</button>
+          <button onClick={onEditLot} className="px-3 py-1.5 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-700">✎ 編集</button>
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-4 mb-5">
+        {[
+          {label:'製造開始日',val:fmtDate(lot.startDate),icon:'📅'},
+          {label:'出荷日',    val:fmtDate(lot.shipDate), icon:'📦'},
+          {label:'担当者',    val:lot.assignee,           icon:'👤'},
+          {label:'出荷先',    val:lot.destination,        icon:'🏭'},
+        ].map(item=>(
+          <div key={item.label} className={`rounded-xl p-4 shadow-sm ${overdue&&item.label==='出荷日'?'bg-red-50':'bg-white'}`}>
+            <div className="text-xs text-gray-400 mb-1">{item.icon} {item.label}</div>
+            <div className={`font-semibold text-sm ${overdue&&item.label==='出荷日'?'text-red-600':''}`}>{item.val}</div>
+          </div>
+        ))}
+      </div>
+      {lot.woodDate&&(
+        <div className="grid grid-cols-2 gap-4 mb-5">
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <div className="text-xs text-gray-400 mb-1">🪵 木地上がり日</div>
+            <div className="font-semibold text-sm">{fmtDate(lot.woodDate)}</div>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <div className="text-xs text-gray-400 mb-1">🎨 塗装上がり日</div>
+            <div className="font-semibold text-sm">{fmtDate(lot.paintDate)}</div>
+          </div>
+        </div>
+      )}
+      <div className="flex gap-2 mb-4">
+        {['issues','images'].map(t=>(
+          <button key={t} onClick={()=>setTab(t)}
+            className={`px-4 py-2 rounded-lg text-sm ${tab===t?'bg-gray-900 text-white':'bg-white border border-gray-200 hover:bg-gray-50'}`}>
+            {t==='issues'?`問題・改善履歴 (${lotIssues.length})`:'画像 (0)'}
+          </button>
+        ))}
+      </div>
+      <button onClick={onAddIssue} className="mb-4 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-700">
+        + 改善・注意点を追加
+      </button>
+      {tab==='issues'&&(
+        <div className="space-y-3">
+          {lotIssues.map(iss=><IssueCard key={iss.id} issue={iss} products={products} showProduct={false} onEdit={()=>onEditIssue(iss)}/>)}
+          {lotIssues.length===0&&<div className="text-center text-gray-400 py-10">記録はありません</div>}
+        </div>
+      )}
+      {tab==='images'&&<div className="text-center text-gray-400 py-10">画像なし</div>}
+    </div>
+  );
+}
+
+// ===== 改善カード =====
+function IssueCard({issue,products,showProduct=true,onEdit}){
+  const border={調査中:'border-l-4 border-yellow-400',解決済:'border-l-4 border-green-400',未対応:'border-l-4 border-red-400'};
+  const pr=products?.find(p=>p.id===issue.productId);
+  return(
+    <div className={`bg-white rounded-xl shadow-sm p-4 ${border[issue.status]||''}`}>
+      <div className="flex justify-between items-start gap-3">
+        <div className="flex-1 min-w-0">
+          {issue.description&&<div className="font-medium text-sm mb-1">{issue.description}</div>}
+          {showProduct&&pr&&<div className="text-xs text-gray-500 mb-1">{pr.name} · {issue.lotNumber} · {issue.partId} · {issue.assignee}</div>}
+          {!showProduct&&issue.partId&&<div className="text-xs text-gray-500 mb-1">部品: {issue.partId}</div>}
+          {issue.cause&&<div className="text-xs text-gray-600 mt-1">原因: {issue.cause}</div>}
+          {issue.improvement&&<div className="text-xs text-teal-700 font-medium mt-1">改善: {issue.improvement}</div>}
+          <div className="text-xs text-gray-400 mt-1">{issue.assignee} · {issue.date}</div>
+        </div>
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          <div className="flex gap-1 flex-wrap justify-end">
+            <Badge type={issue.status}/>
+            {issue.isImportant&&<Badge type="重要変更"/>}
+            {issue.isRecurrencePrevented&&<Badge type="再発防止済"/>}
+          </div>
+          {onEdit&&(
+            <button onClick={onEdit} className="mt-1 text-xs text-gray-400 hover:text-gray-700 border border-gray-200 rounded px-2 py-0.5 hover:bg-gray-50">✎ 編集</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== 問題・改善履歴 =====
+function IssueList({issues,products,defaultFilter,onEditIssue}){
+  const [tab,setTab]=useState(defaultFilter||'all');
+  const [search,setSearch]=useState('');
+  const [prodF,setProdF]=useState('すべて');
+  useEffect(()=>setTab(defaultFilter||'all'),[defaultFilter]);
+  const filtered=issues.filter(i=>{
+    if(tab==='未解決'&&i.status==='解決済') return false;
+    if(tab==='重要変更'&&!i.isImportant) return false;
+    if(tab==='再発防止済'&&!i.isRecurrencePrevented) return false;
+    if(prodF!=='すべて'){const p=products.find(p=>p.id===i.productId);if(p?.name!==prodF)return false;}
+    if(search){const t=`${i.description} ${i.cause} ${i.improvement} ${i.partId}`.toLowerCase();if(!t.includes(search.toLowerCase()))return false;}
+    return true;
+  }).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  return(
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-5">改善・注意記録</h1>
+      <div className="flex gap-2 mb-4">
+        {[['all','すべて'],['未解決','未解決'],['重要変更','重要変更'],['再発防止済','再発防止済']].map(([val,label])=>(
+          <button key={val} onClick={()=>setTab(val)}
+            className={`px-4 py-1.5 rounded-lg text-sm ${tab===val?'bg-gray-900 text-white':'bg-white border border-gray-200 hover:bg-gray-50'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-3 mb-4">
+        <input className="flex-1 border border-gray-200 rounded-lg px-4 py-2 text-sm" placeholder="キーワード検索（内容・部品・原因・改善方法など）..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <select value={prodF} onChange={e=>setProdF(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+          <option>すべて</option>{products.map(p=><option key={p.id}>{p.name}</option>)}
+        </select>
+      </div>
+      <div className="space-y-3">
+        {filtered.map(iss=><IssueCard key={iss.id} issue={iss} products={products} showProduct={true} onEdit={()=>onEditIssue(iss)}/>)}
+        {filtered.length===0&&<div className="text-center text-gray-400 py-12">該当する記録はありません</div>}
+      </div>
+    </div>
+  );
+}
+
+// ===== 製品マスタ =====
+function ProductMaster({products,onSaveProduct,onDeleteProduct}){
+  const [search,setSearch]=useState('');
+  const [editProd,setEditProd]=useState(null);
+  const [showAdd,setShowAdd]=useState(false);
+  const filtered=products.filter(p=>!search||p.name.includes(search)||p.category.includes(search));
+  return(
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-2xl font-bold">製品マスタ</h1>
+        <button onClick={()=>setShowAdd(true)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-700">+ 製品追加</button>
+      </div>
+      <input className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm mb-5" placeholder="製品名・カテゴリで検索..." value={search} onChange={e=>setSearch(e.target.value)}/>
+      <div className="grid grid-cols-3 gap-4">
+        {filtered.map(p=>(
+          <div key={p.id} className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">⬡</div>
+              <div><div className="font-semibold text-sm">{p.name}</div><div className="text-xs text-gray-400">{p.category}</div></div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={()=>setEditProd(p)} className="flex-1 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">編集</button>
+              <button className="flex-1 py-1.5 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-700">履歴 ›</button>
+              <button onClick={()=>onDeleteProduct(p.id)} className="w-8 h-8 flex items-center justify-center text-red-400 hover:text-red-600 text-sm">🗑</button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {(editProd||showAdd)&&(
+        <ProductModal product={editProd}
+          onSave={async data=>{await onSaveProduct(editProd,data);setEditProd(null);setShowAdd(false);}}
+          onClose={()=>{setEditProd(null);setShowAdd(false);}}/>
+      )}
+    </div>
+  );
+}
+function ProductModal({product,onSave,onClose}){
+  const [form,setForm]=useState({name:product?.name||'',category:product?.category||'仏',specMemo:product?.specMemo||'',notes:product?.notes||'',discontinued:product?.discontinued||false});
+  const [saving,setSaving]=useState(false);
+  return(
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-xl p-6 w-96 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-bold text-lg">{product?'製品編集':'製品追加'}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">✕</button>
+        </div>
+        <div className="space-y-4">
+          <div><label className="text-xs text-gray-600 block mb-1">製品名 *</label><input className="w-full border border-blue-400 rounded-lg px-3 py-2 text-sm" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div>
+          <div><label className="text-xs text-gray-600 block mb-1">カテゴリ</label><select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" value={form.category} onChange={e=>setForm({...form,category:e.target.value})}><option>仏</option><option>その他</option></select></div>
+          <div><label className="text-xs text-gray-600 block mb-1">現在仕様メモ</label><textarea className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm h-20 resize-none" value={form.specMemo} onChange={e=>setForm({...form,specMemo:e.target.value})}/></div>
+          <div><label className="text-xs text-gray-600 block mb-1">備考</label><textarea className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm h-16 resize-none" value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></div>
+          <label className="flex items-center gap-2 text-sm">
+            <span className={`w-9 h-5 rounded-full relative cursor-pointer transition-colors ${form.discontinued?'bg-blue-500':'bg-gray-300'}`} onClick={()=>setForm({...form,discontinued:!form.discontinued})}>
+              <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${form.discontinued?'left-4':'left-0.5'}`}/>
+            </span>廃盤
+          </label>
+        </div>
+        <div className="flex gap-3 mt-5">
+          <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm">キャンセル</button>
+          <button onClick={async()=>{if(!form.name||saving)return;setSaving(true);await onSave(form);setSaving(false);}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== スケジュール（ガントチャート ライン表示）=====
+function Schedule({lots,products}){
+  const now=new Date(TODAY);
+  const [viewMode,setViewMode]=useState('half');
+  const [startDate,setStartDate]=useState(new Date(now.getFullYear(),now.getMonth(),1));
+  const [search,setSearch]=useState('');
+  const [assigneeF,setAssigneeF]=useState('すべて');
+
+  const months=viewMode==='1month'?1:6;
+  const endDate=new Date(startDate); endDate.setMonth(endDate.getMonth()+months);
+  const totalMs=endDate-startDate;
+
+  function pct(date){ if(!date)return null; const off=(new Date(date)-startDate)/totalMs*100; return Math.max(0,Math.min(100,off)); }
+
+  const monthHeaders=[];
+  let cur=new Date(startDate.getFullYear(),startDate.getMonth(),1);
+  while(cur<endDate){
+    const mStart=new Date(Math.max(cur,startDate));
+    const mEnd=new Date(cur.getFullYear(),cur.getMonth()+1,1);
+    const mEndC=new Date(Math.min(mEnd,endDate));
+    monthHeaders.push({label:`${cur.getMonth()+1}月`,left:(mStart-startDate)/totalMs*100,width:(mEndC-mStart)/totalMs*100});
+    cur.setMonth(cur.getMonth()+1);
+  }
+
+  const filtered=lots.filter(l=>{
+    const pr=products.find(p=>p.id===l.productId);
+    const inR=l.shipDate&&(new Date(l.shipDate)>=startDate||l.status==='制作中');
+    if(!inR)return false;
+    if(search&&![pr?.name,String(l.lotNumber),l.destination].some(s=>(s||'').includes(search)))return false;
+    if(assigneeF!=='すべて'&&l.assignee!==assigneeF)return false;
+    return true;
+  });
+
+  const todayPct=pct(TODAY);
+  const stats={
+    active:lots.filter(l=>l.status==='制作中').length,
+    upcomingShip:lots.filter(l=>{const s=new Date(l.shipDate);const e=new Date(TODAY);e.setDate(e.getDate()+30);return s>=new Date(TODAY)&&s<=e;}).length,
+    delayed:lots.filter(l=>isOverdue(l)).length,
+    shipped:lots.filter(l=>l.status==='出荷済').length,
+  };
+
+  // ライン区間を描画するヘルパー
+  function Segment({fromPct,toPct,color}){
+    if(fromPct==null||toPct==null)return null;
+    const left=Math.min(fromPct,toPct);
+    const width=Math.abs(toPct-fromPct);
+    if(width<0.1)return null;
+    return<div className={`absolute h-2 rounded-full ${color}`} style={{left:`${left}%`,width:`${width}%`,top:'50%',transform:'translateY(-50%)'}}/>;
+  }
+  function Dot({atPct,color,label}){
+    if(atPct==null||atPct<0||atPct>100)return null;
+    return(
+      <div className="absolute flex flex-col items-center z-20" style={{left:`${atPct}%`,transform:'translateX(-50%)',top:'calc(50% - 6px)'}}>
+        <div className={`w-3 h-3 rounded-full border-2 border-white shadow ${color}`}/>
+        {label&&<div className="text-xs whitespace-nowrap mt-0.5" style={{color:color.replace('bg-','text-').replace('-500','-700').replace('-700','-700')}}>{label}</div>}
+      </div>
+    );
+  }
+
+  return(
+    <div className="p-6 space-y-4">
+      <div className="bg-gray-900 text-white rounded-xl p-5">
+        <div className="flex justify-between items-center">
+          <div>
+            <div className="font-bold text-lg">▦ 生産管理ガントチャート</div>
+            <div className="text-gray-300 text-sm mt-1">{startDate.getFullYear()}年{startDate.getMonth()+1}月 〜 {endDate.getFullYear()}年{endDate.getMonth()}月</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg overflow-hidden border border-gray-600">
+              <button onClick={()=>setViewMode('1month')} className={`px-3 py-1.5 text-sm ${viewMode==='1month'?'bg-gray-600':''}`}>1ヶ月</button>
+              <button onClick={()=>setViewMode('half')} className={`px-3 py-1.5 text-sm ${viewMode==='half'?'bg-gray-600':''}`}>半年</button>
+            </div>
+            <button onClick={()=>{const d=new Date(startDate);d.setMonth(d.getMonth()-1);setStartDate(d);}} className="px-2 py-1 hover:bg-gray-700 rounded text-sm">←</button>
+            <button onClick={()=>setStartDate(new Date(now.getFullYear(),now.getMonth(),1))} className="px-3 py-1 text-sm hover:bg-gray-700 rounded">今月</button>
+            <button onClick={()=>{const d=new Date(startDate);d.setMonth(d.getMonth()+1);setStartDate(d);}} className="px-2 py-1 hover:bg-gray-700 rounded text-sm">→</button>
+            <button className="px-3 py-1.5 bg-orange-500 rounded text-sm font-medium hover:bg-orange-400">A3印刷</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-4 gap-3">
+        {[{label:'進行中ロット',val:stats.active,icon:'◈'},{label:'期間内出荷予定',val:stats.upcomingShip,icon:'📦'},{label:'遅延中',val:stats.delayed,icon:'⚠'},{label:'出荷済',val:stats.shipped,icon:'✓'}].map(s=>(
+          <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-3">
+            <span className="text-xl">{s.icon}</span>
+            <div><div className="text-xs text-gray-500">{s.label}</div><div className="text-2xl font-bold">{s.val}</div></div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-3">
+        <input className="flex-1 border border-gray-200 rounded-lg px-4 py-2 text-sm" placeholder="製品名・ロット番号・納品先で検索..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <select value={assigneeF} onChange={e=>setAssigneeF(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+          <option>すべて</option>{ASSIGNEES.map(a=><option key={a}>{a}</option>)}
+        </select>
+      </div>
+
+      {/* 凡例 */}
+      <div className="flex gap-5 text-xs text-gray-600">
+        <span className="flex items-center gap-1.5"><span className="inline-block w-6 h-2 bg-amber-700 rounded-full"/>制作開始→木地上がり</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block w-6 h-2 bg-blue-500 rounded-full"/>木地上がり→塗装上がり</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block w-6 h-2 bg-red-500 rounded-full"/>塗装上がり→出荷</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block w-0.5 h-4 bg-yellow-400"/>今日</span>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div style={{minWidth:'700px'}}>
+          {/* 月ヘッダー */}
+          <div className="flex border-b border-gray-200 bg-gray-800 text-white text-sm font-semibold">
+            <div className="w-44 flex-shrink-0 p-3 border-r border-gray-600">製品</div>
+            <div className="flex-1 relative h-10">
+              {monthHeaders.map((m,i)=>(
+                <div key={i} className="absolute top-0 h-full flex items-center justify-center border-r border-gray-600 text-sm"
+                  style={{left:`${m.left}%`,width:`${m.width}%`}}>{m.label}</div>
+              ))}
+            </div>
+          </div>
+          {/* ロット行 */}
+          {filtered.map(lot=>{
+            const pr=products.find(p=>p.id===lot.productId);
+            const sP=pct(lot.startDate);
+            const wP=pct(lot.woodDate);
+            const ptP=pct(lot.paintDate);
+            const shP=pct(lot.shipDate);
+            const isDone=lot.status==='出荷済'||lot.status==='完成';
+
+            // 日付ラベル用ヘルパー
+            const dl=(d)=>d?`${new Date(d).getMonth()+1}/${new Date(d).getDate()}`:'';
+
+            return(
+              <div key={lot.id} className="flex border-b border-gray-100 hover:bg-gray-50">
+                <div className="w-44 flex-shrink-0 p-3 border-r border-gray-100">
+                  <div className="font-medium text-sm">{pr?.name}</div>
+                  <div className="text-xs text-gray-400">#{lot.lotNumber} {lot.destination}</div>
+                </div>
+                <div className="flex-1 relative h-16 flex items-center">
+                  {/* 今日線 */}
+                  {todayPct!=null&&todayPct>=0&&todayPct<=100&&(
+                    <div className="absolute top-0 bottom-0 w-0.5 bg-yellow-400 z-10" style={{left:`${todayPct}%`}}/>
+                  )}
+
+                  {/* ===== ライン表示 ===== */}
+                  {/* ① 制作開始→木地上がり（茶色） */}
+                  {!isDone&&wP!=null?
+                    <Segment fromPct={sP} toPct={wP} color="bg-amber-700"/>:
+                    (!isDone&&<Segment fromPct={sP} toPct={shP} color="bg-amber-700"/>)
+                  }
+                  {isDone&&<Segment fromPct={sP} toPct={shP} color="bg-gray-300"/>}
+
+                  {/* ② 木地上がり→塗装上がり（青） */}
+                  {!isDone&&wP!=null&&ptP!=null&&<Segment fromPct={wP} toPct={ptP} color="bg-blue-500"/>}
+                  {!isDone&&wP!=null&&ptP==null&&shP!=null&&<Segment fromPct={wP} toPct={shP} color="bg-blue-500"/>}
+
+                  {/* ③ 塗装上がり→出荷（赤） */}
+                  {!isDone&&ptP!=null&&shP!=null&&<Segment fromPct={ptP} toPct={shP} color="bg-red-500"/>}
+
+                  {/* マイルストーン点 */}
+                  {sP!=null&&<Dot atPct={sP} color="bg-amber-700" label={dl(lot.startDate)}/>}
+                  {wP!=null&&<Dot atPct={wP} color="bg-blue-500" label={dl(lot.woodDate)}/>}
+                  {ptP!=null&&<Dot atPct={ptP} color="bg-blue-700" label={dl(lot.paintDate)}/>}
+                  {shP!=null&&<Dot atPct={shP} color="bg-red-500" label={dl(lot.shipDate)}/>}
+                </div>
+              </div>
+            );
+          })}
+          {filtered.length===0&&<div className="text-center text-gray-400 py-10">表示するロットはありません</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== 設定 =====
+function Settings({parts,users,onAddPart,onDeletePart,onUpdateUser,currentUser}){
+  const [tab,setTab]=useState('parts');
+  const [newPart,setNewPart]=useState({name:'',category:''});
+  const [saving,setSaving]=useState(false);
+  const canManageUsers=currentUser?.email===ADMIN_EMAIL;
+  return(
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-5">設定</h1>
+      <div className="flex gap-2 mb-5">
+        <button onClick={()=>setTab('parts')} className={`px-4 py-2 rounded-lg text-sm ${tab==='parts'?'bg-gray-900 text-white':'bg-white border border-gray-200 hover:bg-gray-50'}`}>部品マスタ</button>
+        {canManageUsers&&(
+          <button onClick={()=>setTab('users')} className={`px-4 py-2 rounded-lg text-sm ${tab==='users'?'bg-gray-900 text-white':'bg-white border border-gray-200 hover:bg-gray-50'}`}>ユーザー管理</button>
+        )}
+      </div>
+      {tab==='parts'&&(
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="flex justify-between items-center p-4 border-b border-gray-100">
+            <h2 className="font-semibold">部品マスタ</h2>
+            <button onClick={async()=>{if(!newPart.name||saving)return;setSaving(true);await onAddPart(newPart);setNewPart({name:'',category:''});setSaving(false);}} disabled={saving} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">+ 追加</button>
+          </div>
+          <table className="w-full">
+            <thead><tr className="text-xs text-gray-500 border-b border-gray-100"><th className="text-left p-3 font-medium">部品名</th><th className="text-left p-3 font-medium">カテゴリ</th><th className="w-10"/></tr></thead>
+            <tbody>
+              <tr className="border-b border-gray-50 bg-gray-50">
+                <td className="p-2"><input className="w-full border border-gray-200 rounded px-2 py-1 text-sm" placeholder="新しい部品名" value={newPart.name} onChange={e=>setNewPart({...newPart,name:e.target.value})}/></td>
+                <td className="p-2"><input className="w-full border border-gray-200 rounded px-2 py-1 text-sm" placeholder="カテゴリ" value={newPart.category} onChange={e=>setNewPart({...newPart,category:e.target.value})}/></td>
+                <td/>
+              </tr>
+              {parts.map(pt=>(
+                <tr key={pt.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="p-3 text-sm">{pt.name}</td>
+                  <td className="p-3 text-sm text-gray-500">{pt.category||'—'}</td>
+                  <td className="p-3"><button onClick={()=>onDeletePart(pt.id)} className="text-red-400 hover:text-red-600 text-sm">🗑</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {tab==='users'&&canManageUsers&&(
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="flex justify-between items-center p-4 border-b border-gray-100">
+            <h2 className="font-semibold">ユーザー管理</h2>
+            <button className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm">+ ユーザー招待</button>
+          </div>
+          <table className="w-full">
+            <thead><tr className="text-xs text-gray-500 border-b border-gray-100"><th className="text-left p-3 font-medium">名前</th><th className="text-left p-3 font-medium">メール</th><th className="text-left p-3 font-medium">権限</th></tr></thead>
+            <tbody>
+              {users.map(u=>(
+                <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="p-3 text-sm font-medium">{u.name}</td>
+                  <td className="p-3 text-sm text-gray-500">{u.email}</td>
+                  <td className="p-3">
+                    <select value={u.role||''} onChange={e=>onUpdateUser(u.id,e.target.value)} className="border border-gray-200 rounded px-2 py-1 text-sm bg-white">
+                      <option value="">—</option><option>編集者</option><option>管理者</option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===== ロット追加／編集モーダル =====
+function LotModal({lot,products,onSave,onClose}){
+  const [form,setForm]=useState({
+    productId:lot?.productId||'', lotNumber:lot?.lotNumber||'',
+    startDate:lot?.startDate||'', shipDate:lot?.shipDate||'',
+    woodDate:lot?.woodDate||'', paintDate:lot?.paintDate||'',
+    destination:lot?.destination||'', assignee:lot?.assignee||'',
+    status:lot?.status||'制作中', hasSpecChange:lot?.hasSpecChange||false,
+  });
+  const [saving,setSaving]=useState(false);
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  return(
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-xl p-6 w-[480px] max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-bold text-lg">{lot?'ロット編集':'ロット追加'}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">✕</button>
+        </div>
+        <div className="space-y-4">
+          <div><label className="text-xs text-gray-600 block mb-1">製品 *</label>
+            <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" value={form.productId} onChange={e=>set('productId',e.target.value)}>
+              <option value="">製品を選択...</option>{products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+          <div><label className="text-xs text-gray-600 block mb-1">ロット番号 *</label>
+            <input type="number" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="0000〜9999" min="0" max="9999" value={form.lotNumber} onChange={e=>set('lotNumber',e.target.value)}/></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="text-xs text-gray-600 block mb-1">製造開始日</label><input type="date" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.startDate} onChange={e=>set('startDate',e.target.value)}/></div>
+            <div><label className="text-xs text-gray-600 block mb-1">出荷日</label><input type="date" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.shipDate} onChange={e=>set('shipDate',e.target.value)}/></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="text-xs text-gray-600 block mb-1">木地上がり日</label><input type="date" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.woodDate||''} onChange={e=>set('woodDate',e.target.value)}/></div>
+            <div><label className="text-xs text-gray-600 block mb-1">塗装上がり日</label><input type="date" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.paintDate||''} onChange={e=>set('paintDate',e.target.value)}/></div>
+          </div>
+          <div><label className="text-xs text-gray-600 block mb-1">出荷先</label>
+            <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" value={form.destination} onChange={e=>set('destination',e.target.value)}>
+              <option value="">出荷先を選択...</option>{DESTINATIONS.map(d=><option key={d}>{d}</option>)}</select></div>
+          <div><label className="text-xs text-gray-600 block mb-1">担当者</label>
+            <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" value={form.assignee} onChange={e=>set('assignee',e.target.value)}>
+              <option value="">担当者を選択...</option>{ASSIGNEES.map(a=><option key={a}>{a}</option>)}</select></div>
+          <div><label className="text-xs text-gray-600 block mb-1">ステータス</label>
+            <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" value={form.status} onChange={e=>set('status',e.target.value)}>
+              {LOT_STATUSES.map(s=><option key={s}>{s}</option>)}</select></div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.hasSpecChange} onChange={e=>set('hasSpecChange',e.target.checked)}/> 今回から仕様変更あり
+          </label>
+        </div>
+        <div className="flex gap-3 mt-5">
+          <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm">キャンセル</button>
+          <button onClick={async()=>{if(!form.productId||!form.lotNumber||saving)return;setSaving(true);await onSave({...form,lotNumber:parseInt(form.lotNumber)});setSaving(false);}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== 改善追加／編集モーダル =====
+function IssueModal({issue,lotId,lots,products,parts,onSave,onClose}){
+  const targetLotId=issue?.lotId||lotId;
+  const lot=lots.find(l=>l.id===targetLotId);
+  const pr=lot?products.find(p=>p.id===lot.productId):null;
+  const [form,setForm]=useState({
+    description:issue?.description||'', partId:issue?.partId||'',
+    cause:issue?.cause||'', improvement:issue?.improvement||'',
+    status:issue?.status||'調査中', priority:issue?.priority||'中',
+    isImportant:issue?.isImportant||false, isRecurrencePrevented:issue?.isRecurrencePrevented||false,
+    assignee:issue?.assignee||lot?.assignee||'',
+  });
+  const [saving,setSaving]=useState(false);
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  return(
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-xl p-6 w-[480px] max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-bold text-lg">{issue?'改善記録 編集':'改善・注意点を追加'}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">✕</button>
+        </div>
+        {lot&&<div className="text-xs text-gray-500 mb-3 pb-3 border-b border-gray-100">{pr?.name} / ロット {lot.lotNumber}</div>}
+        <div className="space-y-4">
+          <div><label className="text-xs text-gray-600 block mb-1">内容</label><textarea className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm h-20 resize-none" value={form.description} onChange={e=>set('description',e.target.value)}/></div>
+          <div><label className="text-xs text-gray-600 block mb-1">部品</label>
+            <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" value={form.partId} onChange={e=>set('partId',e.target.value)}>
+              <option value="">部品を選択...</option>{parts.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}</select></div>
+          <div><label className="text-xs text-gray-600 block mb-1">原因</label><textarea className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm h-16 resize-none" value={form.cause} onChange={e=>set('cause',e.target.value)}/></div>
+          <div><label className="text-xs text-gray-600 block mb-1">改善</label><textarea className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm h-16 resize-none" value={form.improvement} onChange={e=>set('improvement',e.target.value)}/></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="text-xs text-gray-600 block mb-1">ステータス</label>
+              <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" value={form.status} onChange={e=>set('status',e.target.value)}>
+                {ISSUE_STATUSES.map(s=><option key={s}>{s}</option>)}</select></div>
+            <div><label className="text-xs text-gray-600 block mb-1">優先度</label>
+              <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" value={form.priority} onChange={e=>set('priority',e.target.value)}>
+                <option>低</option><option>中</option><option>高</option></select></div>
+          </div>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isImportant} onChange={e=>set('isImportant',e.target.checked)}/> 重要変更</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isRecurrencePrevented} onChange={e=>set('isRecurrencePrevented',e.target.checked)}/> 再発防止済</label>
+          </div>
+          <div><label className="text-xs text-gray-600 block mb-1">担当者</label><input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.assignee} onChange={e=>set('assignee',e.target.value)}/></div>
+        </div>
+        <div className="flex gap-3 mt-5">
+          <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm">キャンセル</button>
+          <button onClick={async()=>{if(saving)return;setSaving(true);await onSave(form);setSaving(false);}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== メインアプリ =====
+function App(){
+  const [page,setPage]=useState('dashboard');
+  const [currentUser,setCurrentUser]=useState(null);
+  const [authChecked,setAuthChecked]=useState(false);
+  const [selectedLotId,setSelectedLotId]=useState(null);
+  const [lots,setLots]=useState([]);
+  const [products,setProducts]=useState([]);
+  const [issues,setIssues]=useState([]);
+  const [parts,setParts]=useState([]);
+  const [users,setUsers]=useState([]);
+  const [loading,setLoading]=useState(true);
+  // モーダル
+  const [showAddLot,setShowAddLot]=useState(false);
+  const [editingLot,setEditingLot]=useState(null);
+  const [addIssueForLot,setAddIssueForLot]=useState(null);
+  const [editingIssue,setEditingIssue]=useState(null);
+  // issues フィルター
+  const [issueDefaultFilter,setIssueDefaultFilter]=useState('all');
+
+  // 認証確認
+  useEffect(()=>{
+    fetch('api/auth.php').then(r=>r.json()).then(d=>{
+      if(d.loggedIn){ setCurrentUser(d.user); loadData(); }
+      else{ setAuthChecked(true); setLoading(false); }
+    }).catch(()=>{ setAuthChecked(true); setLoading(false); });
+  },[]);
+
+  function loadData(){
+    Promise.all([
+      api.get('api/products.php'),
+      api.get('api/lots.php'),
+      api.get('api/issues.php'),
+      api.get('api/parts.php'),
+      api.get('api/users.php'),
+    ]).then(([prods,ls,iss,pts,us])=>{
+      setProducts(prods);setLots(ls);setIssues(iss);setParts(pts);setUsers(us);
+    }).catch(e=>{if(e.code==='UNAUTHORIZED'){setCurrentUser(null);}})
+      .finally(()=>{setAuthChecked(true);setLoading(false);});
+  }
+
+  async function handleLogin(user){ setCurrentUser(user); setLoading(true); loadData(); }
+  async function handleLogout(){ await api.delete('api/auth.php'); setCurrentUser(null); setPage('dashboard'); }
+
+  const selectedLot=lots.find(l=>l.id===selectedLotId);
+  function nav(p){ setPage(p); if(p!=='lot-detail')setSelectedLotId(null); }
+  function openLot(id){ setSelectedLotId(id); setPage('lot-detail'); }
+  function navToIssues(filter){ setIssueDefaultFilter(filter); nav('issues'); }
+
+  // Lot CRUD
+  async function handleAddLot(data){ const c=await api.post('api/lots.php',data); setLots(p=>[...p,c]); setShowAddLot(false); }
+  async function handleEditLot(data){
+    await api.put('api/lots.php',{...editingLot,...data});
+    setLots(p=>p.map(l=>l.id===editingLot.id?{...l,...data}:l));
+    setEditingLot(null);
+  }
+
+  // Issue CRUD
+  async function handleAddIssue(data){
+    const lot=lots.find(l=>l.id===addIssueForLot);
+    const c=await api.post('api/issues.php',{...data,lotId:addIssueForLot,productId:lot?.productId,lotNumber:lot?.lotNumber,date:TODAY});
+    setIssues(p=>[...p,c]); setAddIssueForLot(null);
+  }
+  async function handleEditIssue(data){
+    await api.put('api/issues.php',{...editingIssue,...data});
+    setIssues(p=>p.map(i=>i.id===editingIssue.id?{...i,...data}:i));
+    setEditingIssue(null);
+  }
+
+  // Product CRUD
+  async function handleSaveProduct(editProd,data){
+    if(editProd){ await api.put('api/products.php',{...editProd,...data}); setProducts(p=>p.map(x=>x.id===editProd.id?{...x,...data}:x)); }
+    else{ const c=await api.post('api/products.php',data); setProducts(p=>[...p,c]); }
+  }
+  async function handleDeleteProduct(id){ await api.delete(`api/products.php?id=${encodeURIComponent(id)}`); setProducts(p=>p.filter(x=>x.id!==id)); }
+
+  // Parts CRUD
+  async function handleAddPart(data){ const c=await api.post('api/parts.php',data); setParts(p=>[...p,c]); }
+  async function handleDeletePart(id){ await api.delete(`api/parts.php?id=${encodeURIComponent(id)}`); setParts(p=>p.filter(x=>x.id!==id)); }
+
+  // User update
+  async function handleUpdateUser(id,role){ await api.put('api/users.php',{id,role}); setUsers(p=>p.map(u=>u.id===id?{...u,role}:u)); }
+
+  // ===== 表示 =====
+  if(!authChecked||loading){
+    return(
+      <div className="flex min-h-screen items-center justify-center bg-gray-100">
+        <div className="text-center"><div className="text-gray-400 text-4xl mb-3">⊡</div><div className="text-gray-500">読み込み中...</div></div>
+      </div>
+    );
+  }
+  if(!currentUser){ return <LoginPage onLogin={handleLogin}/>; }
+
+  return(
+    <div className="flex min-h-screen bg-gray-100">
+      <Sidebar page={page} onNav={nav} user={currentUser} onLogout={handleLogout}/>
+      <main className="flex-1 overflow-auto">
+        {page==='dashboard'  && <Dashboard lots={lots} products={products} issues={issues} onNav={nav} onLot={openLot} onIssueFilter={navToIssues}/>}
+        {page==='lots'       && <LotList lots={lots} products={products} issues={issues} onLot={openLot} onAddLot={()=>setShowAddLot(true)}/>}
+        {page==='lot-detail' && selectedLot && (
+          <LotDetail lot={selectedLot} products={products} issues={issues}
+            onBack={()=>nav('lots')}
+            onAddIssue={()=>setAddIssueForLot(selectedLotId)}
+            onEditLot={()=>setEditingLot(selectedLot)}
+            onEditIssue={iss=>setEditingIssue(iss)}/>
+        )}
+        {page==='issues'   && <IssueList issues={issues} products={products} defaultFilter={issueDefaultFilter} onEditIssue={iss=>setEditingIssue(iss)}/>}
+        {page==='products' && <ProductMaster products={products} onSaveProduct={handleSaveProduct} onDeleteProduct={handleDeleteProduct}/>}
+        {page==='schedule' && <Schedule lots={lots} products={products}/>}
+        {page==='settings' && <Settings parts={parts} users={users} onAddPart={handleAddPart} onDeletePart={handleDeletePart} onUpdateUser={handleUpdateUser} currentUser={currentUser}/>}
+      </main>
+
+      {/* ロット追加 */}
+      {showAddLot&&<LotModal products={products} onSave={handleAddLot} onClose={()=>setShowAddLot(false)}/>}
+      {/* ロット編集 */}
+      {editingLot&&<LotModal lot={editingLot} products={products} onSave={handleEditLot} onClose={()=>setEditingLot(null)}/>}
+      {/* 改善追加 */}
+      {addIssueForLot&&<IssueModal lotId={addIssueForLot} lots={lots} products={products} parts={parts} onSave={handleAddIssue} onClose={()=>setAddIssueForLot(null)}/>}
+      {/* 改善編集 */}
+      {editingIssue&&<IssueModal issue={editingIssue} lots={lots} products={products} parts={parts} onSave={handleEditIssue} onClose={()=>setEditingIssue(null)}/>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
