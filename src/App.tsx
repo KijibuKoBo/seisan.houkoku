@@ -5,11 +5,14 @@ import { initDefaultUsers, getSession, logout } from './utils/auth';
 import { saveKijiItems, migrateCategories } from './utils/kijiStore';
 migrateCategories();
 import { syncFromServer, logChange, getChangeLogs } from './utils/api';
+import { seedCostDatabaseIfEmpty } from './utils/costStore';
+seedCostDatabaseIfEmpty();
 import YearlyTable, { CompactSummary } from './components/YearlyTable';
 import MonthModal from './components/MonthModal';
 import LoginPage from './components/LoginPage';
 import UserManager from './components/UserManager';
 import KijiAnalysis from './pages/KijiAnalysis';
+import CostDatabase from './pages/CostDatabase';
 import KijiReport from './components/KijiReport';
 import YearlyReport from './components/YearlyReport';
 import ChangeLog from './components/ChangeLog';
@@ -21,7 +24,7 @@ function getDefaultYears(): number[] {
   return Array.from({ length: 6 }, (_, i) => currentReiwa - i);
 }
 
-type Page = 'report' | 'kiji' | 'users';
+type Page = 'report' | 'kiji' | 'cost' | 'users';
 
 export default function App() {
   const [session, setSession] = useState<AuthSession | null>(getSession);
@@ -37,7 +40,8 @@ export default function App() {
   useEffect(() => {
     initDefaultUsers();
     syncFromServer().finally(() => {
-      migrateCategories(); // サーバー同期後にも正規化を実行
+      migrateCategories();
+      seedCostDatabaseIfEmpty();
       setStore(loadStore());
       setSyncing(false);
     });
@@ -138,6 +142,11 @@ export default function App() {
             <button className="nav-btn" onClick={() => setShowKijiReport(true)}>
               木地部月次報告
             </button>
+            {session.userId === 'admin' && (
+              <button className={`nav-btn ${page === 'cost' ? 'active' : ''}`} onClick={() => setPage('cost')}>
+                原価管理
+              </button>
+            )}
             {canEdit && (
               <button className={`nav-btn ${page === 'users' ? 'active' : ''}`} onClick={() => setPage('users')}>
                 ユーザー管理
@@ -190,6 +199,8 @@ export default function App() {
         )}
 
         {page === 'kiji' && <KijiAnalysis store={store} onSaveMonthKiji={handleKijiMonthSave} canEdit={canEdit} />}
+
+        {page === 'cost' && session.userId === 'admin' && <CostDatabase />}
 
         {page === 'users' && canEdit && <UserManager />}
       </main>

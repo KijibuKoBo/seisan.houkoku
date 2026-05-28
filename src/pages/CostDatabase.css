@@ -1,0 +1,195 @@
+.cd-wrap {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+}
+
+.cd-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.cd-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1a3a5c;
+}
+
+.cd-subtitle {
+  font-size: 12px;
+  color: #888;
+  margin-top: 3px;
+}
+
+.cd-saved {
+  font-size: 13px;
+  color: #27ae60;
+  font-weight: bold;
+  padding: 5px 14px;
+  background: #eafaf1;
+  border-radius: 20px;
+}
+
+/* ── Tabs ── */
+.cd-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0;
+  border-bottom: 2px solid #1a3a5c;
+  flex-wrap: wrap;
+}
+
+.cd-tab {
+  padding: 8px 16px;
+  background: #e8eef6;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+
+.cd-tab:hover { background: #d0dcea; }
+
+.cd-tab.active {
+  background: #1a3a5c;
+  color: white;
+  font-weight: bold;
+}
+
+.cd-tab-cnt {
+  font-size: 11px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 10px;
+  padding: 0 6px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.cd-tab.active .cd-tab-cnt {
+  background: rgba(255,255,255,0.25);
+}
+
+/* ── Body ── */
+.cd-body {
+  background: white;
+  border-radius: 0 8px 8px 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.cd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.cd-table thead tr {
+  background: #1a3a5c;
+}
+
+.cd-table thead th {
+  color: white;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.cd-th-no    { width: 44px; text-align: center !important; }
+.cd-th-name  { }
+.cd-th-price { width: 130px; text-align: right !important; }
+.cd-th-act   { width: 140px; text-align: center !important; }
+
+.cd-row td {
+  border-bottom: 1px solid #f0f4f8;
+  padding: 8px 12px;
+  vertical-align: middle;
+}
+
+.cd-row.editing td {
+  background: #f0f7ff;
+}
+
+.cd-row:last-of-type td { border-bottom: none; }
+
+.cd-td-no    { text-align: center; color: #aaa; font-size: 11px; }
+.cd-td-name  { color: #222; }
+.cd-td-price { text-align: right; font-weight: 600; color: #1a3a5c; white-space: nowrap; }
+.cd-td-act   { text-align: center; white-space: nowrap; }
+
+/* ── Inputs ── */
+.cd-input {
+  border: 1px solid #b0c4de;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cd-input:focus {
+  outline: none;
+  border-color: #1a3a5c;
+  box-shadow: 0 0 0 2px rgba(26,58,92,0.15);
+}
+
+.cd-input-price {
+  width: 110px;
+  text-align: right;
+}
+
+/* ── Buttons ── */
+.cd-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  margin: 0 2px;
+  transition: opacity 0.15s;
+}
+
+.cd-btn:hover { opacity: 0.8; }
+
+.cd-btn.edit   { background: #e8eef6; color: #1a3a5c; border: 1px solid #b0c4de; }
+.cd-btn.del    { background: #fef0f0; color: #c0392b; border: 1px solid #f5c6c6; }
+.cd-btn.save   { background: #1a3a5c; color: white; }
+.cd-btn.cancel { background: #eee; color: #555; }
+.cd-btn.add    { background: #27ae60; color: white; }
+
+/* ── Add row ── */
+.cd-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 12px;
+  border-top: 2px solid #e8eef6;
+  background: #f8fafd;
+}
+
+.cd-add-label {
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
+  min-width: 44px;
+}
+
+.cd-add-name  { flex: 1; }
+.cd-add-price { width: 120px; flex-shrink: 0; }
+
+/* ── Note ── */
+.cd-note {
+  padding: 10px 16px 14px;
+  font-size: 11px;
+  color: #aaa;
+}

@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { KijiItem, YearStore } from '../types';
 import { loadAllKijiItems, getAvailableKijiYears, loadKijiItems, saveKijiItems, renameKijiItems, renameKijiItemsByName } from '../utils/kijiStore';
-import { PRODUCT_LIST, CATEGORIES, CATEGORY_FULL } from '../utils/productList';
+import { CATEGORIES, CATEGORY_FULL } from '../utils/productList';
+import { loadCostDatabase } from '../utils/costStore';
 import KijiReport from '../components/KijiReport';
 import './KijiAnalysis.css';
 
@@ -879,7 +880,7 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
   const [newUnitPrice, setNewUnitPrice] = useState(0);
   const [amountManual, setAmountManual] = useState(false);
 
-  const filteredProducts = PRODUCT_LIST.filter(p => p.category === newCategory);
+  const filteredProducts = loadCostDatabase().filter(p => p.category === newCategory);
 
   useEffect(() => {
     const loaded = loadKijiItems(selYear, selMonth);

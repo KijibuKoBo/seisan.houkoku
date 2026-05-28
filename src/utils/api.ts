@@ -1,7 +1,7 @@
 const API = './api.php';
 const TOKEN = 'mtsng_api_2024';
 
-const SYNC_KEYS = ['matsunaga_seisan', 'matsunaga_kiji_items', 'matsunaga_users'] as const;
+const SYNC_KEYS = ['matsunaga_seisan', 'matsunaga_kiji_items', 'matsunaga_users', 'matsunaga_cost_db'] as const;
 
 export async function apiSet(key: string, value: string): Promise<void> {
   try {
