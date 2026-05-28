@@ -1065,7 +1065,16 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
               onChange={e => handleNewCountChange(Number(e.target.value))}
             />
             <span>本</span>
-            <span className="manage-price-hint">単価：¥{newUnitPrice.toLocaleString()}</span>
+            <label>単価：</label>
+            <input
+              type="number" className="manage-num-input wide" value={newUnitPrice} min={0}
+              onChange={e => {
+                const p = Number(e.target.value);
+                setNewUnitPrice(p);
+                if (!amountManual) setNewAmount(p * newCount);
+              }}
+            />
+            <span>円　</span>
             <label>金額：</label>
             <input
               type="number" className="manage-num-input wide" value={newAmount} min={0}
