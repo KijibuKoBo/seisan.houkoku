@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>松永工房 改善入力</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Hiragino Sans', 'Meiryo', 'Yu Gothic', sans-serif; background:#f3f4f6; }
+  select, input, textarea { font-size: 16px !important; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+const TODAY = new Date().toISOString().split('T')[0];
+const ISSUE_STATUSES = ['調査中','解決済','未対応'];
+const ASSIGNEES = ['石原','新貝','保崎','鈴木','国松','福間'];
+
+const api = {
+  get:    async (url)      => { const r=await fetch(url); if(r.status===401)throw{code:'UNAUTHORIZED'}; return r.json(); },
+  post:   async (url,data) => { const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}); if(r.status===401)throw{code:'UNAUTHORIZED'}; return r.json(); },
+};
+
+// ===== ログイン =====
+function LoginPage({onLogin}){
+  const [email,setEmail]=useState('');
+  const [pass,setPass]=useState('');
+  const [err,setErr]=useState('');
+  const [loading,setLoading]=useState(false);
+  async function submit(e){
+    e.preventDefault(); setErr(''); setLoading(true);
+    try{
+      const r=await fetch('api/auth.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
+      const d=await r.json();
+      if(r.ok) onLogin(d.user); else setErr(d.error||'ログインに失敗しました');
+    }catch{setErr('通信エラーが発生しました');}
+    setLoading(false);
+  }
+  return(
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-lg p-7 w-full max-w-sm">
+        <div className="text-center mb-6">
+          <div className="text-5xl mb-2">⊡</div>
+          <h1 className="font-bold text-xl">松永工房</h1>
+          <div className="text-sm text-gray-400 mt-1">改善・注意点 入力</div>
+        </div>
+        <form onSubmit={submit} className="space-y-4">
+          <div>
+            <label className="text-sm text-gray-500 block mb-1">メールアドレス</label>
+            <input type="email" required className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-gray-500"
+              value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" autoComplete="email"/>
+          </div>
+          <div>
+            <label className="text-sm text-gray-500 block mb-1">パスワード</label>
+            <input type="password" required className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-gray-500"
+              value={pass} onChange={e=>setPass(e.target.value)} autoComplete="current-password"/>
+          </div>
+          {err&&<div className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-xl">{err}</div>}
+          <button type="submit" disabled={loading}
+            className="w-full py-3.5 bg-gray-900 text-white rounded-xl text-base font-medium disabled:opacity-50 active:bg-gray-700">
+            {loading?'ログイン中...':'ログイン'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ===== ロット選択 =====
+function LotSelect({lots,products,onSelect,onLogout,user}){
+  const [search,setSearch]=useState('');
+  const active=lots
+    .filter(l=>l.status==='制作中')
+    .filter(l=>{
+      if(!search) return true;
+      const pr=products.find(p=>p.id===l.productId);
+      return [pr?.name,String(l.lotNumber),l.destination].some(s=>(s||'').includes(search));
+    })
+    .sort((a,b)=>b.lotNumber-a.lotNumber);
+
+  return(
+    <div className="min-h-screen">
+      {/* ヘッダー */}
+      <div className="bg-gray-900 text-white px-4 py-4 flex items-center justify-between sticky top-0 z-10">
+        <div>
+          <div className="font-bold text-lg">改善・注意点を追加</div>
+          <div className="text-gray-400 text-xs mt-0.5">{user?.name}</div>
+        </div>
+        <button onClick={onLogout} className="text-gray-400 text-sm px-3 py-1.5 border border-gray-600 rounded-lg active:bg-gray-700">
+          ログアウト
+        </button>
+      </div>
+
+      <div className="p-4 space-y-3">
+        <div className="text-sm text-gray-500 font-medium">ロットを選択してください</div>
+        <input
+          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base"
+          placeholder="製品名・ロット番号で検索..."
+          value={search} onChange={e=>setSearch(e.target.value)}/>
+
+        {active.length===0&&(
+          <div className="text-center text-gray-400 py-12">進行中のロットがありません</div>
+        )}
+
+        <div className="space-y-2">
+          {active.map(lot=>{
+            const pr=products.find(p=>p.id===lot.productId);
+            return(
+              <button key={lot.id} onClick={()=>onSelect(lot)}
+                className="w-full bg-white rounded-2xl shadow-sm p-4 text-left active:bg-gray-50 border border-transparent active:border-gray-200">
+                <div className="font-bold text-lg text-gray-900">{pr?.name}</div>
+                <div className="text-gray-500 text-sm mt-0.5">
+                  ロット #{lot.lotNumber}
+                  {lot.destination&&<span> · {lot.destination}</span>}
+                  {lot.assignee&&<span> · {lot.assignee}</span>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== 改善入力フォーム =====
+function IssueForm({lot,products,parts,onSave,onBack}){
+  const pr=products.find(p=>p.id===lot.productId);
+  const [form,setForm]=useState({
+    description:'', partId:'', cause:'', improvement:'',
+    status:'調査中', isImportant:false, isRecurrencePrevented:false,
+    assignee:lot.assignee||'',
+  });
+  const [saving,setSaving]=useState(false);
+  const [done,setDone]=useState(false);
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+
+  async function submit(){
+    if(saving) return;
+    setSaving(true);
+    try{
+      await api.post('api/issues.php',{
+        ...form,
+        lotId:lot.id,
+        productId:lot.productId,
+        lotNumber:lot.lotNumber,
+        date:TODAY,
+      });
+      setDone(true);
+    }catch(e){
+      alert('保存に失敗しました。もう一度お試しください。');
+    }
+    setSaving(false);
+  }
+
+  if(done){
+    return(
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+        <div className="text-6xl mb-4">✓</div>
+        <div className="text-xl font-bold text-gray-800 mb-2">保存しました</div>
+        <div className="text-gray-500 text-sm mb-8">{pr?.name} / ロット #{lot.lotNumber}</div>
+        <button onClick={onBack}
+          className="w-full max-w-xs py-4 bg-gray-900 text-white rounded-2xl text-base font-medium active:bg-gray-700">
+          別のロットに入力する
+        </button>
+      </div>
+    );
+  }
+
+  return(
+    <div className="min-h-screen">
+      {/* ヘッダー */}
+      <div className="bg-gray-900 text-white px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
+        <button onClick={onBack} className="text-gray-300 text-xl px-1">←</button>
+        <div>
+          <div className="font-bold">{pr?.name}</div>
+          <div className="text-gray-400 text-xs">ロット #{lot.lotNumber}</div>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-4 pb-32">
+
+        {/* 内容 */}
+        <div>
+          <label className="text-sm font-medium text-gray-700 block mb-1.5">内容</label>
+          <textarea
+            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base h-28 resize-none focus:outline-none focus:border-gray-500"
+            placeholder="気になった点・注意事項など..."
+            value={form.description} onChange={e=>set('description',e.target.value)}/>
+        </div>
+
+        {/* 部品 */}
+        <div>
+          <label className="text-sm font-medium text-gray-700 block mb-1.5">部品</label>
+          <select className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base bg-white focus:outline-none focus:border-gray-500"
+            value={form.partId} onChange={e=>set('partId',e.target.value)}>
+            <option value="">選択なし</option>
+            {parts.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}
+          </select>
+        </div>
+
+        {/* 原因 */}
+        <div>
+          <label className="text-sm font-medium text-gray-700 block mb-1.5">原因</label>
+          <textarea
+            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base h-20 resize-none focus:outline-none focus:border-gray-500"
+            placeholder="原因がわかれば..."
+            value={form.cause} onChange={e=>set('cause',e.target.value)}/>
+        </div>
+
+        {/* 改善 */}
+        <div>
+          <label className="text-sm font-medium text-gray-700 block mb-1.5">改善策</label>
+          <textarea
+            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base h-20 resize-none focus:outline-none focus:border-gray-500"
+            placeholder="改善方法があれば..."
+            value={form.improvement} onChange={e=>set('improvement',e.target.value)}/>
+        </div>
+
+        {/* ステータス */}
+        <div>
+          <label className="text-sm font-medium text-gray-700 block mb-1.5">ステータス</label>
+          <div className="flex gap-2">
+            {ISSUE_STATUSES.map(s=>(
+              <button key={s} onClick={()=>set('status',s)}
+                className={`flex-1 py-3 rounded-xl text-sm font-medium border transition-colors ${form.status===s?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-600 border-gray-300 active:bg-gray-50'}`}>
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 担当者 */}
+        <div>
+          <label className="text-sm font-medium text-gray-700 block mb-1.5">担当者</label>
+          <div className="flex flex-wrap gap-2">
+            {ASSIGNEES.map(a=>(
+              <button key={a} onClick={()=>set('assignee',a)}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors ${form.assignee===a?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-600 border-gray-300 active:bg-gray-50'}`}>
+                {a}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* フラグ */}
+        <div className="flex gap-3">
+          <button onClick={()=>set('isImportant',!form.isImportant)}
+            className={`flex-1 py-3 rounded-xl text-sm font-medium border transition-colors ${form.isImportant?'bg-orange-500 text-white border-orange-500':'bg-white text-gray-600 border-gray-300'}`}>
+            重要変更
+          </button>
+          <button onClick={()=>set('isRecurrencePrevented',!form.isRecurrencePrevented)}
+            className={`flex-1 py-3 rounded-xl text-sm font-medium border transition-colors ${form.isRecurrencePrevented?'bg-teal-500 text-white border-teal-500':'bg-white text-gray-600 border-gray-300'}`}>
+            再発防止済
+          </button>
+        </div>
+      </div>
+
+      {/* 保存ボタン（固定） */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200">
+        <button onClick={submit} disabled={saving||!form.description}
+          className="w-full py-4 bg-gray-900 text-white rounded-2xl text-base font-bold disabled:opacity-40 active:bg-gray-700">
+          {saving?'保存中...':'保存する'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ===== メインアプリ =====
+function App(){
+  const [user,setUser]=useState(null);
+  const [authChecked,setAuthChecked]=useState(false);
+  const [lots,setLots]=useState([]);
+  const [products,setProducts]=useState([]);
+  const [parts,setParts]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [selectedLot,setSelectedLot]=useState(null);
+
+  useEffect(()=>{
+    fetch('api/auth.php').then(r=>r.json()).then(d=>{
+      if(d.loggedIn){ setUser(d.user); loadData(); }
+      else{ setAuthChecked(true); setLoading(false); }
+    }).catch(()=>{ setAuthChecked(true); setLoading(false); });
+  },[]);
+
+  function loadData(){
+    Promise.all([
+      api.get('api/products.php'),
+      api.get('api/lots.php'),
+      api.get('api/parts.php'),
+    ]).then(([prods,ls,pts])=>{
+      setProducts(prods); setLots(ls); setParts(pts);
+    }).catch(e=>{ if(e.code==='UNAUTHORIZED') setUser(null); })
+      .finally(()=>{ setAuthChecked(true); setLoading(false); });
+  }
+
+  async function handleLogin(u){ setUser(u); setLoading(true); loadData(); }
+  async function handleLogout(){ await fetch('api/auth.php',{method:'DELETE'}); setUser(null); setSelectedLot(null); }
+
+  if(!authChecked||loading){
+    return(
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center"><div className="text-gray-400 text-5xl mb-3">⊡</div><div className="text-gray-500">読み込み中...</div></div>
+      </div>
+    );
+  }
+  if(!user) return <LoginPage onLogin={handleLogin}/>;
+  if(selectedLot) return <IssueForm lot={selectedLot} products={products} parts={parts} onSave={()=>{}} onBack={()=>setSelectedLot(null)}/>;
+  return <LotSelect lots={lots} products={products} onSelect={setSelectedLot} onLogout={handleLogout} user={user}/>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
