@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { YearStore } from '../types';
 import { salesTotal } from '../utils/calc';
+import MonthlyReport from './MonthlyReport';
 import './YearlyReport.css';
 
 interface Props {
@@ -52,6 +53,7 @@ export default function YearlyReport({ store, defaultYear, onClose }: Props) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [lineLoading, setLineLoading] = useState(false);
+  const [monthlyMonth, setMonthlyMonth] = useState<number | null>(null);
 
   const prev = year - 1;
   const md  = (m: number) => store[year]?.[m];
@@ -153,8 +155,28 @@ export default function YearlyReport({ store, defaultYear, onClose }: Props) {
           </div>
         </div>
 
-        {/* ── Table ── */}
+        {/* ── Body ── */}
         <div className="yr-body">
+
+          {/* Left sidebar: monthly report buttons */}
+          <div className="yr-sidebar no-print">
+            <div className="yr-sidebar-title">月次報告書</div>
+            <div className="yr-sidebar-sub">営業・木地部・塗装部・まとめ部</div>
+            <div className="yr-sidebar-months">
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                <button
+                  key={m}
+                  className="yr-month-btn"
+                  onClick={() => setMonthlyMonth(m)}
+                >
+                  {m}月
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Main table area */}
+          <div className="yr-table-area">
           <table className="yr-table">
             <thead>
               <tr>
@@ -219,8 +241,18 @@ export default function YearlyReport({ store, defaultYear, onClose }: Props) {
           <div className="yr-footer-note">
             ※ 前年比は令和{prev}年度との比較です。データのない月は「—」と表示します。
           </div>
-        </div>
+          </div>{/* /yr-table-area */}
+        </div>{/* /yr-body */}
       </div>
+
+      {monthlyMonth !== null && (
+        <MonthlyReport
+          store={store}
+          defaultYear={year}
+          defaultMonth={monthlyMonth}
+          onClose={() => setMonthlyMonth(null)}
+        />
+      )}
     </div>
   );
 }

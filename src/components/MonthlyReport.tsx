@@ -5,6 +5,7 @@ import './MonthlyReport.css';
 interface Props {
   store: YearStore;
   defaultYear: number;
+  defaultMonth?: number;
   onClose: () => void;
 }
 
@@ -173,12 +174,12 @@ function genPoints(cur: MonthData | null, prevY: MonthData | null): string[] {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function MonthlyReport({ store, defaultYear, onClose }: Props) {
+export default function MonthlyReport({ store, defaultYear, defaultMonth, onClose }: Props) {
   const currentReiwa = new Date().getFullYear() - 2018;
   const allYears = [...new Set([...Object.keys(store).map(Number), currentReiwa])].sort((a, b) => b - a);
 
   const [selYear, setSelYear]   = useState(defaultYear);
-  const [selMonth, setSelMonth] = useState(new Date().getMonth() + 1);
+  const [selMonth, setSelMonth] = useState(defaultMonth ?? new Date().getMonth() + 1);
 
   const cur   = store[selYear]?.[selMonth]      ?? null;
   const prevM = selMonth === 1
