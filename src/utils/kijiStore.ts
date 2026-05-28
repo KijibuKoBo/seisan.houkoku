@@ -48,14 +48,17 @@ export function getAvailableKijiYears(): number[] {
   return [...years].sort((a, b) => b - a);
 }
 
-// カテゴリー名の旧略称→正式名称マイグレーション（起動時に実行）
+// カテゴリーを略称に正規化するマップ（起動時に実行）
 const CATEGORY_MIGRATION: Record<string, string> = {
-  'Ca': 'Continue',
-  'Co': 'Continue',
-  'MP': 'Master Piece',
-  'PC': 'Petit.Continue',
-  '仏':  '仏壇',
-  '特':  '特注',
+  'Ca':            'Co',
+  'Continue':      'Co',
+  'Master Piece':  'MP',
+  'MasterPiece':   'MP',
+  'Petit.Continue':'PC',
+  'Petit Continue':'PC',
+  'Petit':         'PC',
+  '仏':            '仏壇',
+  '特':            '特注',
 };
 
 export function migrateCategories(): void {

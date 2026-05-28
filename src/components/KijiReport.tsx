@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { KijiItem } from '../types';
-import { CATEGORY_SHORT } from '../utils/productList';
+import { CATEGORY_FULL } from '../utils/productList';
 import './KijiReport.css';
 
 interface Props {
@@ -11,43 +11,44 @@ interface Props {
 }
 
 const CAT_STYLE: Record<string, { bg: string; color: string }> = {
-  'Continue':      { bg: '#b2dfdb', color: '#00695c' },
-  'Master Piece':  { bg: '#b3e5fc', color: '#01579b' },
-  '仏壇':          { bg: '#e1bee7', color: '#6a1b9a' },
-  'リリー':        { bg: '#f8bbd0', color: '#880e4f' },
-  'Petit.Continue':{ bg: '#bbdefb', color: '#1565c0' },
-  '特注':          { bg: '#fff9c4', color: '#e65100' },
-  'その他':        { bg: '#f5f5f5', color: '#757575' },
+  'Co':    { bg: '#b2dfdb', color: '#00695c' },
+  'MP':    { bg: '#b3e5fc', color: '#01579b' },
+  '仏壇':  { bg: '#e1bee7', color: '#6a1b9a' },
+  'リリー':{ bg: '#f8bbd0', color: '#880e4f' },
+  'PC':    { bg: '#bbdefb', color: '#1565c0' },
+  '特注':  { bg: '#fff9c4', color: '#e65100' },
+  'その他':{ bg: '#f5f5f5', color: '#757575' },
 };
 
 function catStyle(cat: string) {
   return CAT_STYLE[cat] ?? { bg: '#f0f0f0', color: '#555' };
 }
 
-function catAbbr(cat: string) {
-  return CATEGORY_SHORT[cat] ?? cat;
-}
-
 // ── Donut chart ──────────────────────────────────────────────────────────────
 
-function DonutChart({ cats, active }: { cats: string[]; active: KijiItem[] }) {
-  const total = active.reduce((s, i) => s + i.count, 0);
+function DonutChart({ cats, items, getValue, unit }: {
+  cats: string[];
+  items: KijiItem[];
+  getValue: (i: KijiItem) => number;
+  unit: string;
+}) {
+  const total = items.reduce((s, i) => s + getValue(i), 0);
   if (total === 0) return <div className="kr-chart-empty">データなし</div>;
 
   const R = 48; const CX = 58; const CY = 58;
   let start = -Math.PI / 2;
 
   const slices = cats.map(cat => {
-    const cnt = active.filter(i => (i.category || 'その他') === cat)
-                      .reduce((s, i) => s + i.count, 0);
-    const angle = (cnt / total) * 2 * Math.PI;
+    const val = items.filter(i => (i.category || 'その他') === cat)
+                     .reduce((s, i) => s + getValue(i), 0);
+    const angle = (val / total) * 2 * Math.PI;
     const end = start + angle;
     const x1 = CX + R * Math.cos(start); const y1 = CY + R * Math.sin(start);
     const x2 = CX + R * Math.cos(end);   const y2 = CY + R * Math.sin(end);
     const large = angle > Math.PI ? 1 : 0;
-    const path = cnt > 0 ? `M${CX},${CY} L${x1},${y1} A${R},${R},0,${large},1,${x2},${y2}Z` : '';
+    const path = val > 0 ? `M${CX},${CY} L${x1},${y1} A${R},${R},0,${large},1,${x2},${y2}Z` : '';
     start = end;
-    return { cat, cnt, path, color: catStyle(cat).color };
+    return { cat, val, path, color: catStyle(cat).color };
   });
 
   return (
@@ -57,12 +58,12 @@ function DonutChart({ cats, active }: { cats: string[]; active: KijiItem[] }) {
         <circle cx={CX} cy={CY} r={R * 0.46} fill="white" />
       </svg>
       <div className="kr-donut-legend">
-        {slices.filter(s => s.cnt > 0).map(s => (
+        {slices.filter(s => s.val > 0).map(s => (
           <div key={s.cat} className="kr-leg-row">
             <span className="kr-leg-dot" style={{ background: s.color }} />
-            <span className="kr-leg-name">{s.cat}</span>
-            <span className="kr-leg-val">{s.cnt}本</span>
-            <span className="kr-leg-pct">({((s.cnt / total) * 100).toFixed(1)}%)</span>
+            <span className="kr-leg-name">{CATEGORY_FULL[s.cat] ?? s.cat}</span>
+            <span className="kr-leg-val">{unit === '本' ? `${s.val}本` : `¥${s.val.toLocaleString()}`}</span>
+            <span className="kr-leg-pct">({((s.val / total) * 100).toFixed(1)}%)</span>
           </div>
         ))}
       </div>
@@ -262,7 +263,7 @@ export default function KijiReport({ year, month, items, onClose }: Props) {
                           <td className="kr-td-code">{item.code}</td>
                           <td className="kr-td-cat">
                             <span className="kr-cat-chip" style={{ background: cs.bg, color: cs.color }}>
-                              {catAbbr(cat)}
+                              {cat}
                             </span>
                           </td>
                           <td className="kr-td-name">{item.name}</td>
@@ -294,11 +295,15 @@ export default function KijiReport({ year, month, items, onClose }: Props) {
                 </table>
               </div>
 
-              {/* Bottom row: donut + notes */}
+              {/* Bottom row: donuts + notes */}
               <div className="kr-bottom-row">
                 <div className="kr-bottom-card">
                   <div className="kr-bottom-title">カテゴリー別 本数割合</div>
-                  <DonutChart cats={cats} active={active} />
+                  <DonutChart cats={cats} items={active} getValue={i => i.count} unit="本" />
+                </div>
+                <div className="kr-bottom-card">
+                  <div className="kr-bottom-title">カテゴリー別 金額割合</div>
+                  <DonutChart cats={cats} items={items} getValue={i => i.amount} unit="円" />
                 </div>
                 <div className="kr-bottom-card">
                   <div className="kr-bottom-title">📋 備考</div>

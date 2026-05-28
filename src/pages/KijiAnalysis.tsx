@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { KijiItem, YearStore } from '../types';
 import { loadAllKijiItems, getAvailableKijiYears, loadKijiItems, saveKijiItems, renameKijiItems, renameKijiItemsByName } from '../utils/kijiStore';
-import { PRODUCT_LIST, CATEGORIES, CATEGORY_SHORT } from '../utils/productList';
+import { PRODUCT_LIST, CATEGORIES, CATEGORY_FULL } from '../utils/productList';
 import KijiReport from '../components/KijiReport';
 import './KijiAnalysis.css';
 
@@ -316,7 +316,7 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
                   .map((p, i) => (
                     <HBar
                       key={p.key}
-                      label={`${i + 1}. ${p.code ? `[${p.code}] ` : ''}${CATEGORY_SHORT[p.category] ?? p.category} ${p.name}`}
+                      label={`${i + 1}. ${p.code ? `[${p.code}] ` : ''}${p.category} ${p.name}`}
                       value={rankBy === 'count' ? p.totalCount : p.totalAmount}
                       max={rankBy === 'count' ? maxCount : maxAmount}
                       color={COLORS[i % COLORS.length]}
@@ -355,7 +355,7 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
                   {categories.map((c, i) => (
                     <span key={c.category} className="legend-item">
                       <span className="legend-dot" style={{ background: COLORS[i % COLORS.length] }} />
-                      {c.category || 'その他'}
+                      {CATEGORY_FULL[c.category] ?? c.category}
                     </span>
                   ))}
                 </div>
@@ -508,7 +508,7 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
                       {categories.map((c, i) => (
                         <span key={c.category} className="legend-item">
                           <span className="legend-dot" style={{ background: COLORS[i % COLORS.length] }} />
-                          {c.category || 'その他'} ({c.totalCount}本)
+                          {CATEGORY_FULL[c.category] ?? c.category} ({c.totalCount}本)
                         </span>
                       ))}
                     </div>
