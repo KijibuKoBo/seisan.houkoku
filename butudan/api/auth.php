@@ -26,12 +26,18 @@ if ($method === 'GET') {
 
     try {
         $db   = getDB();
-        // login_idカラムがあればlogin_idで、なければemailで検索
+        // login_idカラムの存在確認
+        $hasLoginId = false;
         try {
+            $chk = $db->query("SELECT login_id FROM users LIMIT 1");
+            $hasLoginId = true;
+        } catch (Exception $e) {}
+
+        if ($hasLoginId) {
             $stmt = $db->prepare("SELECT * FROM users WHERE login_id = ?");
             $stmt->execute([$login_id]);
             $user = $stmt->fetch();
-        } catch (Exception $e) {
+        } else {
             // login_idカラムなし→emailで検索（移行期対応）
             $stmt = $db->prepare("SELECT * FROM users WHERE email = ?");
             $stmt->execute([$login_id]);
