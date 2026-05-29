@@ -96,7 +96,7 @@ const NAV=[
   {id:'settings', label:'設定',          icon:'⚙'},
 ];
 function Sidebar({page,onNav,user,onLogout}){
-  const isAdmin=user?.email===ADMIN_EMAIL;
+  const isAdmin=user?.role===ADMIN_ROLE;
   const nav=NAV.filter(n=>n.id!=='settings'||isAdmin);
   return(
     <div className="w-52 min-h-screen bg-gray-900 text-white flex flex-col flex-shrink-0">
