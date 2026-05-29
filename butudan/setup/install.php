@@ -87,6 +87,13 @@ if (isset($_POST['run'])) {
   role       VARCHAR(50),
   created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+"CREATE TABLE IF NOT EXISTS assignees (
+  id         VARCHAR(50)  PRIMARY KEY,
+  name       VARCHAR(100) NOT NULL,
+  sort_order INT          DEFAULT 0,
+  created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
         ];
 
         foreach ($sqls as $sql) {
@@ -165,6 +172,15 @@ if (isset($_POST['run'])) {
         $stmt = $db->prepare("INSERT IGNORE INTO users (id,name,email,role) VALUES(?,?,?,?)");
         foreach ($users as $u) { $stmt->execute($u); }
         $logs[] = 'ユーザー投入 ✓';
+
+        // 担当者マスタ
+        $assignees = [
+            ['as01','石原',1],['as02','新貝',2],['as03','保崎',3],
+            ['as04','鈴木',4],['as05','国松',5],['as06','福間',6],
+        ];
+        $stmt = $db->prepare("INSERT IGNORE INTO assignees (id,name,sort_order) VALUES(?,?,?)");
+        foreach ($assignees as $a) { $stmt->execute($a); }
+        $logs[] = '担当者マスタ投入 ✓';
 
         // ロックファイル作成
         file_put_contents($lockFile, date('Y-m-d H:i:s'));

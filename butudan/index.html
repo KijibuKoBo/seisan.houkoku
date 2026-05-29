@@ -19,7 +19,6 @@ const { useState, useEffect } = React;
 
 const TODAY = new Date().toISOString().split('T')[0];
 const DESTINATIONS  = ['丸喜','現代仏壇','—','その他'];
-const ASSIGNEES     = ['石原','新貝','保崎','鈴木','国松','福間'];
 const LOT_STATUSES  = ['制作中','出荷済','完成'];
 const ISSUE_STATUSES= ['調査中','解決済','未対応'];
 const ADMIN_EMAIL   = 'kijibu.kobo@gmail.com';
@@ -675,9 +674,11 @@ function Schedule({lots,products}){
 }
 
 // ===== 設定 =====
-function Settings({parts,users,onAddPart,onDeletePart,onUpdateUser,currentUser}){
+function Settings({parts,users,assignees,onAddPart,onDeletePart,onUpdateUser,onAddAssignee,onEditAssignee,onDeleteAssignee,currentUser}){
   const [tab,setTab]=useState('parts');
   const [newPart,setNewPart]=useState({name:'',category:''});
+  const [newAssignee,setNewAssignee]=useState('');
+  const [editingAssignee,setEditingAssignee]=useState(null);
   const [saving,setSaving]=useState(false);
   const canManageUsers=currentUser?.email===ADMIN_EMAIL;
   return(
@@ -685,6 +686,7 @@ function Settings({parts,users,onAddPart,onDeletePart,onUpdateUser,currentUser})
       <h1 className="text-2xl font-bold mb-5">設定</h1>
       <div className="flex gap-2 mb-5">
         <button onClick={()=>setTab('parts')} className={`px-4 py-2 rounded-lg text-sm ${tab==='parts'?'bg-gray-900 text-white':'bg-white border border-gray-200 hover:bg-gray-50'}`}>部品マスタ</button>
+        <button onClick={()=>setTab('assignees')} className={`px-4 py-2 rounded-lg text-sm ${tab==='assignees'?'bg-gray-900 text-white':'bg-white border border-gray-200 hover:bg-gray-50'}`}>担当者マスタ</button>
         {canManageUsers&&(
           <button onClick={()=>setTab('users')} className={`px-4 py-2 rounded-lg text-sm ${tab==='users'?'bg-gray-900 text-white':'bg-white border border-gray-200 hover:bg-gray-50'}`}>ユーザー管理</button>
         )}
@@ -708,6 +710,41 @@ function Settings({parts,users,onAddPart,onDeletePart,onUpdateUser,currentUser})
                   <td className="p-3 text-sm">{pt.name}</td>
                   <td className="p-3 text-sm text-gray-500">{pt.category||'—'}</td>
                   <td className="p-3"><button onClick={()=>onDeletePart(pt.id)} className="text-red-400 hover:text-red-600 text-sm">🗑</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {tab==='assignees'&&(
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="flex justify-between items-center p-4 border-b border-gray-100">
+            <h2 className="font-semibold">担当者マスタ</h2>
+            <div className="flex gap-2">
+              <input className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-32" placeholder="担当者名" value={newAssignee} onChange={e=>setNewAssignee(e.target.value)}
+                onKeyDown={async e=>{if(e.key==='Enter'&&newAssignee.trim()&&!saving){setSaving(true);await onAddAssignee({name:newAssignee.trim(),sortOrder:assignees.length});setNewAssignee('');setSaving(false);}}}/>
+              <button onClick={async()=>{if(!newAssignee.trim()||saving)return;setSaving(true);await onAddAssignee({name:newAssignee.trim(),sortOrder:assignees.length});setNewAssignee('');setSaving(false);}} disabled={saving} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">+ 追加</button>
+            </div>
+          </div>
+          <table className="w-full">
+            <thead><tr className="text-xs text-gray-500 border-b border-gray-100"><th className="text-left p-3 font-medium">担当者名</th><th className="w-24"/></tr></thead>
+            <tbody>
+              {assignees.map(a=>(
+                <tr key={a.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="p-3 text-sm">
+                    {editingAssignee?.id===a.id?(
+                      <input autoFocus className="border border-blue-400 rounded px-2 py-1 text-sm w-40"
+                        value={editingAssignee.name} onChange={e=>setEditingAssignee({...editingAssignee,name:e.target.value})}
+                        onKeyDown={async e=>{if(e.key==='Enter'){await onEditAssignee(editingAssignee);setEditingAssignee(null);}if(e.key==='Escape')setEditingAssignee(null);}}
+                        onBlur={async()=>{if(editingAssignee)await onEditAssignee(editingAssignee);setEditingAssignee(null);}}/>
+                    ):(
+                      <span onClick={()=>setEditingAssignee({...a})} className="cursor-pointer hover:text-blue-600">{a.name}</span>
+                    )}
+                  </td>
+                  <td className="p-3 flex gap-2 justify-end">
+                    <button onClick={()=>setEditingAssignee({...a})} className="text-gray-400 hover:text-gray-700 text-xs border border-gray-200 rounded px-2 py-0.5">✎ 編集</button>
+                    <button onClick={()=>onDeleteAssignee(a.id)} className="text-red-400 hover:text-red-600 text-sm">🗑</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -743,7 +780,7 @@ function Settings({parts,users,onAddPart,onDeletePart,onUpdateUser,currentUser})
 }
 
 // ===== ロット追加／編集モーダル =====
-function LotModal({lot,products,onSave,onClose}){
+function LotModal({lot,products,assignees,onSave,onClose}){
   const [form,setForm]=useState({
     productId:lot?.productId||'', lotNumber:lot?.lotNumber||'',
     startDate:lot?.startDate||'', shipDate:lot?.shipDate||'',
@@ -779,7 +816,7 @@ function LotModal({lot,products,onSave,onClose}){
               <option value="">出荷先を選択...</option>{DESTINATIONS.map(d=><option key={d}>{d}</option>)}</select></div>
           <div><label className="text-xs text-gray-600 block mb-1">担当者</label>
             <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" value={form.assignee} onChange={e=>set('assignee',e.target.value)}>
-              <option value="">担当者を選択...</option>{ASSIGNEES.map(a=><option key={a}>{a}</option>)}</select></div>
+              <option value="">担当者を選択...</option>{assignees.map(a=><option key={a.id}>{a.name}</option>)}</select></div>
           <div><label className="text-xs text-gray-600 block mb-1">ステータス</label>
             <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" value={form.status} onChange={e=>set('status',e.target.value)}>
               {LOT_STATUSES.map(s=><option key={s}>{s}</option>)}</select></div>
@@ -797,7 +834,7 @@ function LotModal({lot,products,onSave,onClose}){
 }
 
 // ===== 改善追加／編集モーダル =====
-function IssueModal({issue,lotId,lots,products,parts,onSave,onDelete,onClose}){
+function IssueModal({issue,lotId,lots,products,parts,assignees,onSave,onDelete,onClose}){
   const targetLotId=issue?.lotId||lotId;
   const lot=lots.find(l=>l.id===targetLotId);
   const pr=lot?products.find(p=>p.id===lot.productId):null;
@@ -838,7 +875,10 @@ function IssueModal({issue,lotId,lots,products,parts,onSave,onDelete,onClose}){
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isImportant} onChange={e=>set('isImportant',e.target.checked)}/> 重要変更</label>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isRecurrencePrevented} onChange={e=>set('isRecurrencePrevented',e.target.checked)}/> 再発防止済</label>
           </div>
-          <div><label className="text-xs text-gray-600 block mb-1">担当者</label><input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={form.assignee} onChange={e=>set('assignee',e.target.value)}/></div>
+          <div><label className="text-xs text-gray-600 block mb-1">担当者</label>
+            <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" value={form.assignee} onChange={e=>set('assignee',e.target.value)}>
+              <option value="">担当者を選択...</option>{assignees.map(a=><option key={a.id}>{a.name}</option>)}
+            </select></div>
         </div>
         <div className="flex gap-3 mt-5">
           {issue&&onDelete&&(
@@ -863,6 +903,7 @@ function App(){
   const [issues,setIssues]=useState([]);
   const [parts,setParts]=useState([]);
   const [users,setUsers]=useState([]);
+  const [assignees,setAssignees]=useState([]);
   const [loading,setLoading]=useState(true);
   // モーダル
   const [showAddLot,setShowAddLot]=useState(false);
@@ -887,8 +928,9 @@ function App(){
       api.get('api/issues.php'),
       api.get('api/parts.php'),
       api.get('api/users.php'),
-    ]).then(([prods,ls,iss,pts,us])=>{
-      setProducts(prods);setLots(ls);setIssues(iss);setParts(pts);setUsers(us);
+      api.get('api/assignees.php'),
+    ]).then(([prods,ls,iss,pts,us,asgn])=>{
+      setProducts(prods);setLots(ls);setIssues(iss);setParts(pts);setUsers(us);setAssignees(asgn);
     }).catch(e=>{if(e.code==='UNAUTHORIZED'){setCurrentUser(null);}})
       .finally(()=>{setAuthChecked(true);setLoading(false);});
   }
@@ -940,6 +982,11 @@ function App(){
   // User update
   async function handleUpdateUser(id,role){ await api.put('api/users.php',{id,role}); setUsers(p=>p.map(u=>u.id===id?{...u,role}:u)); }
 
+  // Assignee CRUD
+  async function handleAddAssignee(data){ const c=await api.post('api/assignees.php',data); setAssignees(p=>[...p,c]); }
+  async function handleEditAssignee(data){ await api.put('api/assignees.php',data); setAssignees(p=>p.map(a=>a.id===data.id?{...a,...data}:a)); }
+  async function handleDeleteAssignee(id){ await api.delete(`api/assignees.php?id=${encodeURIComponent(id)}`); setAssignees(p=>p.filter(a=>a.id!==id)); }
+
   // ===== 表示 =====
   if(!authChecked||loading){
     return(
@@ -966,17 +1013,17 @@ function App(){
         {page==='issues'   && <IssueList issues={issues} products={products} defaultFilter={issueDefaultFilter} onEditIssue={iss=>setEditingIssue(iss)}/>}
         {page==='products' && <ProductMaster products={products} onSaveProduct={handleSaveProduct} onDeleteProduct={handleDeleteProduct}/>}
         {page==='schedule' && <Schedule lots={lots} products={products}/>}
-        {page==='settings' && <Settings parts={parts} users={users} onAddPart={handleAddPart} onDeletePart={handleDeletePart} onUpdateUser={handleUpdateUser} currentUser={currentUser}/>}
+        {page==='settings' && <Settings parts={parts} users={users} assignees={assignees} onAddPart={handleAddPart} onDeletePart={handleDeletePart} onUpdateUser={handleUpdateUser} onAddAssignee={handleAddAssignee} onEditAssignee={handleEditAssignee} onDeleteAssignee={handleDeleteAssignee} currentUser={currentUser}/>}
       </main>
 
       {/* ロット追加 */}
-      {showAddLot&&<LotModal products={products} onSave={handleAddLot} onClose={()=>setShowAddLot(false)}/>}
+      {showAddLot&&<LotModal products={products} assignees={assignees} onSave={handleAddLot} onClose={()=>setShowAddLot(false)}/>}
       {/* ロット編集 */}
-      {editingLot&&<LotModal lot={editingLot} products={products} onSave={handleEditLot} onClose={()=>setEditingLot(null)}/>}
+      {editingLot&&<LotModal lot={editingLot} products={products} assignees={assignees} onSave={handleEditLot} onClose={()=>setEditingLot(null)}/>}
       {/* 改善追加 */}
-      {addIssueForLot&&<IssueModal lotId={addIssueForLot} lots={lots} products={products} parts={parts} onSave={handleAddIssue} onClose={()=>setAddIssueForLot(null)}/>}
+      {addIssueForLot&&<IssueModal lotId={addIssueForLot} lots={lots} products={products} parts={parts} assignees={assignees} onSave={handleAddIssue} onClose={()=>setAddIssueForLot(null)}/>}
       {/* 改善編集 */}
-      {editingIssue&&<IssueModal issue={editingIssue} lots={lots} products={products} parts={parts} onSave={handleEditIssue} onDelete={handleDeleteIssue} onClose={()=>setEditingIssue(null)}/>}
+      {editingIssue&&<IssueModal issue={editingIssue} lots={lots} products={products} parts={parts} assignees={assignees} onSave={handleEditIssue} onDelete={handleDeleteIssue} onClose={()=>setEditingIssue(null)}/>}
     </div>
   );
 }

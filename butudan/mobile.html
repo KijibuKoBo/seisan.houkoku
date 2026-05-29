@@ -19,7 +19,6 @@
 const { useState, useEffect } = React;
 const TODAY = new Date().toISOString().split('T')[0];
 const ISSUE_STATUSES = ['調査中','解決済','未対応'];
-const ASSIGNEES = ['石原','新貝','保崎','鈴木','国松','福間'];
 
 const api = {
   get:    async (url)      => { const r=await fetch(url); if(r.status===401)throw{code:'UNAUTHORIZED'}; return r.json(); },
@@ -129,7 +128,7 @@ function LotSelect({lots,products,onSelect,onLogout,user}){
 }
 
 // ===== 改善入力フォーム =====
-function IssueForm({lot,products,parts,onSave,onBack}){
+function IssueForm({lot,products,parts,assignees,onSave,onBack}){
   const pr=products.find(p=>p.id===lot.productId);
   const [form,setForm]=useState({
     description:'', partId:'', cause:'', improvement:'',
@@ -239,10 +238,10 @@ function IssueForm({lot,products,parts,onSave,onBack}){
         <div>
           <label className="text-sm font-medium text-gray-700 block mb-1.5">担当者</label>
           <div className="flex flex-wrap gap-2">
-            {ASSIGNEES.map(a=>(
-              <button key={a} onClick={()=>set('assignee',a)}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors ${form.assignee===a?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-600 border-gray-300 active:bg-gray-50'}`}>
-                {a}
+            {assignees.map(a=>(
+              <button key={a.id} onClick={()=>set('assignee',a.name)}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors ${form.assignee===a.name?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-600 border-gray-300 active:bg-gray-50'}`}>
+                {a.name}
               </button>
             ))}
           </div>
@@ -279,6 +278,7 @@ function App(){
   const [lots,setLots]=useState([]);
   const [products,setProducts]=useState([]);
   const [parts,setParts]=useState([]);
+  const [assignees,setAssignees]=useState([]);
   const [loading,setLoading]=useState(true);
   const [selectedLot,setSelectedLot]=useState(null);
 
@@ -294,8 +294,9 @@ function App(){
       api.get('api/products.php'),
       api.get('api/lots.php'),
       api.get('api/parts.php'),
-    ]).then(([prods,ls,pts])=>{
-      setProducts(prods); setLots(ls); setParts(pts);
+      api.get('api/assignees.php'),
+    ]).then(([prods,ls,pts,asgn])=>{
+      setProducts(prods); setLots(ls); setParts(pts); setAssignees(asgn);
     }).catch(e=>{ if(e.code==='UNAUTHORIZED') setUser(null); })
       .finally(()=>{ setAuthChecked(true); setLoading(false); });
   }
@@ -311,7 +312,7 @@ function App(){
     );
   }
   if(!user) return <LoginPage onLogin={handleLogin}/>;
-  if(selectedLot) return <IssueForm lot={selectedLot} products={products} parts={parts} onSave={()=>{}} onBack={()=>setSelectedLot(null)}/>;
+  if(selectedLot) return <IssueForm lot={selectedLot} products={products} parts={parts} assignees={assignees} onSave={()=>{}} onBack={()=>setSelectedLot(null)}/>;
   return <LotSelect lots={lots} products={products} onSelect={setSelectedLot} onLogout={handleLogout} user={user}/>;
 }
 
