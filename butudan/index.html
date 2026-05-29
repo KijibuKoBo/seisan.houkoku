@@ -298,11 +298,14 @@ function LotList({lots,products,issues,onLot,onAddLot}){
 }
 
 // ===== ロット詳細 =====
-function LotDetail({lot,products,issues,onBack,onAddIssue,onEditLot,onEditIssue}){
+function LotDetail({lot,lots,products,issues,onBack,onAddIssue,onEditLot,onEditIssue}){
   const [tab,setTab]=useState('issues');
   const pr=products.find(p=>p.id===lot.productId);
   const lotIssues=issues.filter(i=>i.lotId===lot.id).sort((a,b)=>new Date(b.date)-new Date(a.date));
   const overdue=isOverdue(lot);
+  // 同製品の過去ロットの記録（現在のロット以外）
+  const pastLots=lots.filter(l=>l.productId===lot.productId&&l.id!==lot.id).sort((a,b)=>b.lotNumber-a.lotNumber);
+  const pastIssues=issues.filter(i=>pastLots.some(l=>l.id===i.lotId)).sort((a,b)=>new Date(b.date)-new Date(a.date));
   return(
     <div className="p-6">
       <div className="flex justify-between items-center mb-5">
@@ -348,20 +351,39 @@ function LotDetail({lot,products,issues,onBack,onAddIssue,onEditLot,onEditIssue}
         </div>
       )}
       <div className="flex gap-2 mb-4">
-        {['issues','images'].map(t=>(
-          <button key={t} onClick={()=>setTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm ${tab===t?'bg-gray-900 text-white':'bg-white border border-gray-200 hover:bg-gray-50'}`}>
-            {t==='issues'?`問題・改善履歴 (${lotIssues.length})`:'画像 (0)'}
-          </button>
-        ))}
+        <button onClick={()=>setTab('issues')} className={`px-4 py-2 rounded-lg text-sm ${tab==='issues'?'bg-gray-900 text-white':'bg-white border border-gray-200 hover:bg-gray-50'}`}>
+          このロットの記録 ({lotIssues.length})
+        </button>
+        <button onClick={()=>setTab('past')} className={`px-4 py-2 rounded-lg text-sm ${tab==='past'?'bg-amber-600 text-white':'bg-white border border-amber-200 text-amber-700 hover:bg-amber-50'}`}>
+          同製品の過去の記録 ({pastIssues.length})
+        </button>
+        <button onClick={()=>setTab('images')} className={`px-4 py-2 rounded-lg text-sm ${tab==='images'?'bg-gray-900 text-white':'bg-white border border-gray-200 hover:bg-gray-50'}`}>
+          画像 (0)
+        </button>
       </div>
-      <button onClick={onAddIssue} className="mb-4 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-700">
-        + 改善・注意点を追加
-      </button>
-      {tab==='issues'&&(
+      {tab==='issues'&&<>
+        <button onClick={onAddIssue} className="mb-4 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-700">+ 改善・注意点を追加</button>
         <div className="space-y-3">
           {lotIssues.map(iss=><IssueCard key={iss.id} issue={iss} products={products} showProduct={false} onEdit={()=>onEditIssue(iss)}/>)}
           {lotIssues.length===0&&<div className="text-center text-gray-400 py-10">記録はありません</div>}
+        </div>
+      </>}
+      {tab==='past'&&(
+        <div className="space-y-4">
+          {pastLots.filter(l=>issues.some(i=>i.lotId===l.id)).map(l=>{
+            const lIssues=issues.filter(i=>i.lotId===l.id).sort((a,b)=>new Date(b.date)-new Date(a.date));
+            return(
+              <div key={l.id}>
+                <div className="text-xs font-semibold text-amber-700 bg-amber-50 px-3 py-1.5 rounded-lg mb-2">
+                  ロット #{l.lotNumber}　{fmtDate(l.shipDate)}　<Badge type={l.status}/>
+                </div>
+                <div className="space-y-2 pl-2">
+                  {lIssues.map(iss=><IssueCard key={iss.id} issue={iss} products={products} showProduct={false} onEdit={null}/>)}
+                </div>
+              </div>
+            );
+          })}
+          {pastIssues.length===0&&<div className="text-center text-gray-400 py-10">同製品の過去の記録はありません</div>}
         </div>
       )}
       {tab==='images'&&<div className="text-center text-gray-400 py-10">画像なし</div>}
@@ -809,7 +831,7 @@ function Settings({parts,users,assignees,onAddPart,onDeletePart,onUpdateUser,onA
 }
 
 // ===== ロット追加／編集モーダル =====
-function LotModal({lot,products,assignees,onSave,onClose}){
+function LotModal({lot,products,assignees,onSave,onDelete,onClose}){
   const [form,setForm]=useState({
     productId:lot?.productId||'', lotNumber:lot?.lotNumber||'',
     startDate:lot?.startDate||'', shipDate:lot?.shipDate||'',
@@ -818,6 +840,7 @@ function LotModal({lot,products,assignees,onSave,onClose}){
     status:lot?.status||'制作中', hasSpecChange:lot?.hasSpecChange||false,
   });
   const [saving,setSaving]=useState(false);
+  const [deleting,setDeleting]=useState(false);
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
   return(
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -854,6 +877,9 @@ function LotModal({lot,products,assignees,onSave,onClose}){
           </label>
         </div>
         <div className="flex gap-3 mt-5">
+          {lot&&onDelete&&(
+            <button onClick={async()=>{if(deleting||!window.confirm('このロットを削除しますか？\n関連する改善記録も削除されます。'))return;setDeleting(true);await onDelete(lot.id);setDeleting(false);}} disabled={deleting} className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm disabled:opacity-50 hover:bg-red-600">{deleting?'削除中...':'🗑 削除'}</button>
+          )}
           <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm">キャンセル</button>
           <button onClick={async()=>{if(saving)return;setSaving(true);await onSave({...form,lotNumber:parseInt(form.lotNumber)||0});setSaving(false);}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
         </div>
@@ -980,6 +1006,12 @@ function App(){
     setLots(p=>p.map(l=>l.id===editingLot.id?{...l,...data}:l));
     setEditingLot(null);
   }
+  async function handleDeleteLot(id){
+    await api.delete(`api/lots.php?id=${encodeURIComponent(id)}`);
+    setLots(p=>p.filter(l=>l.id!==id));
+    setIssues(p=>p.filter(i=>i.lotId!==id));
+    setEditingLot(null); nav('lots');
+  }
 
   // Issue CRUD
   async function handleAddIssue(data){
@@ -1045,7 +1077,7 @@ function App(){
         {page==='dashboard'  && <Dashboard lots={lots} products={products} issues={issues} onNav={nav} onLot={openLot} onIssueFilter={navToIssues}/>}
         {page==='lots'       && <LotList lots={lots} products={products} issues={issues} onLot={openLot} onAddLot={()=>setShowAddLot(true)}/>}
         {page==='lot-detail' && selectedLot && (
-          <LotDetail lot={selectedLot} products={products} issues={issues}
+          <LotDetail lot={selectedLot} lots={lots} products={products} issues={issues}
             onBack={()=>nav('lots')}
             onAddIssue={()=>setAddIssueForLot(selectedLotId)}
             onEditLot={()=>setEditingLot(selectedLot)}
@@ -1060,7 +1092,7 @@ function App(){
       {/* ロット追加 */}
       {showAddLot&&<LotModal products={products} assignees={assignees} onSave={handleAddLot} onClose={()=>setShowAddLot(false)}/>}
       {/* ロット編集 */}
-      {editingLot&&<LotModal lot={editingLot} products={products} assignees={assignees} onSave={handleEditLot} onClose={()=>setEditingLot(null)}/>}
+      {editingLot&&<LotModal lot={editingLot} products={products} assignees={assignees} onSave={handleEditLot} onDelete={handleDeleteLot} onClose={()=>setEditingLot(null)}/>}
       {/* 改善追加 */}
       {addIssueForLot&&<IssueModal lotId={addIssueForLot} lots={lots} products={products} parts={parts} assignees={assignees} onSave={handleAddIssue} onClose={()=>setAddIssueForLot(null)}/>}
       {/* 改善編集 */}
