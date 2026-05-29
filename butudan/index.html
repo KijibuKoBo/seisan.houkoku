@@ -855,7 +855,7 @@ function LotModal({lot,products,assignees,onSave,onClose}){
         </div>
         <div className="flex gap-3 mt-5">
           <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm">キャンセル</button>
-          <button onClick={async()=>{if(!form.productId||!form.lotNumber||saving)return;setSaving(true);await onSave({...form,lotNumber:parseInt(form.lotNumber)});setSaving(false);}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
+          <button onClick={async()=>{if(!form.productId||!form.lotNumber||saving)return;setSaving(true);await onSave({...form,lotNumber:parseInt(form.lotNumber)});setSaving(false);}} disabled={saving||!form.productId||!form.lotNumber} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed">{saving?'保存中...':'保存'}</button>
         </div>
       </div>
     </div>
