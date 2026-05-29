@@ -95,6 +95,16 @@ if (isset($_POST['run'])) {
   sort_order INT          DEFAULT 0,
   created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+"CREATE TABLE IF NOT EXISTS logs (
+  id           VARCHAR(50)  PRIMARY KEY,
+  user_name    VARCHAR(100),
+  action       VARCHAR(20),
+  target_type  VARCHAR(50),
+  target_label VARCHAR(200),
+  detail       TEXT,
+  created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
         ];
 
         foreach ($sqls as $sql) {

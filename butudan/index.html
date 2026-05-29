@@ -746,6 +746,40 @@ function UserManager({users,onAddUser,onUpdateUser,onDeleteUser}){
   );
 }
 
+function LogViewer(){
+  const [logs,setLogs]=useState([]);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{
+    fetch('api/logs.php').then(r=>r.json()).then(d=>{setLogs(Array.isArray(d)?d:[]);}).finally(()=>setLoading(false));
+  },[]);
+  const actionColor={'追加':'text-green-600','編集':'text-blue-600','削除':'text-red-500'};
+  if(loading) return <div className="text-gray-400 text-sm p-4">読み込み中...</div>;
+  return(
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="flex justify-between items-center p-4 border-b border-gray-100">
+        <h2 className="font-semibold">変更ログ</h2>
+        <span className="text-xs text-gray-400">{logs.length}件</span>
+      </div>
+      <div className="divide-y divide-gray-50 max-h-[600px] overflow-y-auto">
+        {logs.length===0&&<div className="text-center text-gray-400 py-10 text-sm">ログはありません</div>}
+        {logs.map(l=>(
+          <div key={l.id} className="px-4 py-3 flex items-start gap-3 hover:bg-gray-50">
+            <span className={`text-xs font-bold w-10 flex-shrink-0 mt-0.5 ${actionColor[l.action]||'text-gray-500'}`}>{l.action}</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium">{l.target_label}</div>
+              {l.detail&&<div className="text-xs text-gray-500 truncate mt-0.5">{l.detail}</div>}
+            </div>
+            <div className="text-right flex-shrink-0">
+              <div className="text-xs font-medium text-gray-700">{l.user_name}</div>
+              <div className="text-xs text-gray-400">{l.created_at?.slice(0,16).replace('T',' ')}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Settings({parts,users,assignees,onAddPart,onDeletePart,onUpdateUser,onAddUser,onDeleteUser,onAddAssignee,onEditAssignee,onDeleteAssignee,currentUser}){
   const [tab,setTab]=useState('parts');
   const [newPart,setNewPart]=useState({name:'',category:''});
@@ -761,6 +795,9 @@ function Settings({parts,users,assignees,onAddPart,onDeletePart,onUpdateUser,onA
         <button onClick={()=>setTab('assignees')} className={`px-4 py-2 rounded-lg text-sm ${tab==='assignees'?'bg-gray-900 text-white':'bg-white border border-gray-200 hover:bg-gray-50'}`}>担当者マスタ</button>
         {canManageUsers&&(
           <button onClick={()=>setTab('users')} className={`px-4 py-2 rounded-lg text-sm ${tab==='users'?'bg-gray-900 text-white':'bg-white border border-gray-200 hover:bg-gray-50'}`}>ユーザー管理</button>
+        )}
+        {canManageUsers&&(
+          <button onClick={()=>setTab('logs')} className={`px-4 py-2 rounded-lg text-sm ${tab==='logs'?'bg-gray-900 text-white':'bg-white border border-gray-200 hover:bg-gray-50'}`}>変更ログ</button>
         )}
       </div>
       {tab==='parts'&&(
@@ -826,6 +863,7 @@ function Settings({parts,users,assignees,onAddPart,onDeletePart,onUpdateUser,onA
       {tab==='users'&&canManageUsers&&(
         <UserManager users={users} onAddUser={onAddUser} onUpdateUser={onUpdateUser} onDeleteUser={onDeleteUser}/>
       )}
+      {tab==='logs'&&canManageUsers&&<LogViewer/>}
     </div>
   );
 }
@@ -994,23 +1032,37 @@ function App(){
   async function handleLogin(user){ setCurrentUser(user); setLoading(true); loadData(); }
   async function handleLogout(){ await api.delete('api/auth.php'); setCurrentUser(null); setPage('dashboard'); }
 
+  function writeLog(action, targetType, targetLabel, detail=''){
+    api.post('api/logs.php',{userName:currentUser?.name||'',action,targetType,targetLabel,detail}).catch(()=>{});
+  }
+
   const selectedLot=lots.find(l=>l.id===selectedLotId);
   function nav(p){ setPage(p); if(p!=='lot-detail')setSelectedLotId(null); }
   function openLot(id){ setSelectedLotId(id); setPage('lot-detail'); }
   function navToIssues(filter){ setIssueDefaultFilter(filter); nav('issues'); }
 
   // Lot CRUD
-  async function handleAddLot(data){ const c=await api.post('api/lots.php',data); setLots(p=>[...p,c]); setShowAddLot(false); }
+  async function handleAddLot(data){
+    const c=await api.post('api/lots.php',data);
+    setLots(p=>[...p,c]); setShowAddLot(false);
+    const pr=products.find(p=>p.id===data.productId);
+    writeLog('追加','ロット',`${pr?.name||'?'} #${data.lotNumber||'?'}`);
+  }
   async function handleEditLot(data){
     await api.put('api/lots.php',{...editingLot,...data});
     setLots(p=>p.map(l=>l.id===editingLot.id?{...l,...data}:l));
     setEditingLot(null);
+    const pr=products.find(p=>p.id===data.productId);
+    writeLog('編集','ロット',`${pr?.name||'?'} #${data.lotNumber||'?'}`);
   }
   async function handleDeleteLot(id){
+    const lot=lots.find(l=>l.id===id);
+    const pr=products.find(p=>p.id===lot?.productId);
     await api.delete(`api/lots.php?id=${encodeURIComponent(id)}`);
     setLots(p=>p.filter(l=>l.id!==id));
     setIssues(p=>p.filter(i=>i.lotId!==id));
     setEditingLot(null); nav('lots');
+    writeLog('削除','ロット',`${pr?.name||'?'} #${lot?.lotNumber||'?'}`);
   }
 
   // Issue CRUD
@@ -1018,16 +1070,24 @@ function App(){
     const lot=lots.find(l=>l.id===addIssueForLot);
     const c=await api.post('api/issues.php',{...data,lotId:addIssueForLot,productId:lot?.productId,lotNumber:lot?.lotNumber,date:TODAY});
     setIssues(p=>[...p,c]); setAddIssueForLot(null);
+    const pr=products.find(p=>p.id===lot?.productId);
+    writeLog('追加','改善記録',`${pr?.name||'?'} #${lot?.lotNumber||'?'}`,data.description||'');
   }
   async function handleEditIssue(data){
     await api.put('api/issues.php',{...editingIssue,...data});
     setIssues(p=>p.map(i=>i.id===editingIssue.id?{...i,...data}:i));
     setEditingIssue(null);
+    const lot=lots.find(l=>l.id===editingIssue.lotId);
+    const pr=products.find(p=>p.id===editingIssue.productId);
+    writeLog('編集','改善記録',`${pr?.name||'?'} #${lot?.lotNumber||'?'}`,data.description||'');
   }
   async function handleDeleteIssue(id){
+    const iss=issues.find(i=>i.id===id);
+    const pr=products.find(p=>p.id===iss?.productId);
     await api.delete(`api/issues.php?id=${encodeURIComponent(id)}`);
     setIssues(p=>p.filter(i=>i.id!==id));
     setEditingIssue(null);
+    writeLog('削除','改善記録',`${pr?.name||'?'} #${iss?.lotNumber||'?'}`,iss?.description||'');
   }
 
   // Product CRUD
