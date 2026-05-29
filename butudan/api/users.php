@@ -20,8 +20,8 @@ try {
 
     } elseif ($m === 'POST') {
         $id = uniqid('u', true);
-        $db->prepare("INSERT INTO users (id,name,email,role) VALUES(?,?,?,?)")
-           ->execute([$id, $d['name']??'', $d['email']??'', $d['role']??'']);
+        $db->prepare("INSERT INTO users (id,name,login_id,role) VALUES(?,?,?,?)")
+           ->execute([$id, $d['name']??'', $d['loginId']??'', $d['role']??'編集者']);
         $s = $db->prepare("SELECT * FROM users WHERE id=?"); $s->execute([$id]);
         echo json_encode($s->fetch());
 

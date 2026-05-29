@@ -83,6 +83,7 @@ if (isset($_POST['run'])) {
 "CREATE TABLE IF NOT EXISTS users (
   id         VARCHAR(50)  PRIMARY KEY,
   name       VARCHAR(100) NOT NULL,
+  login_id   VARCHAR(100),
   email      VARCHAR(200),
   role       VARCHAR(50),
   created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
@@ -164,12 +165,12 @@ if (isset($_POST['run'])) {
 
         // ユーザー
         $users = [
-            ['u001','KoBo木地部','kijibu.kobo@gmail.com','編集者'],
-            ['u002','まとめKoBo','matomebu.kobo@gmail.com','管理者'],
-            ['u003','塗装部工房','tosoubu.kobo@gmail.com','編集者'],
-            ['u004','福間健太郎','viaken1213@gmail.com',''],
+            ['u001','KoBo木地部',  'kijibu',    'kijibu.kobo@gmail.com',   '管理者'],
+            ['u002','まとめKoBo',  'matomebu',  'matomebu.kobo@gmail.com', '編集者'],
+            ['u003','塗装部工房',  'tosoubu',   'tosoubu.kobo@gmail.com',  '編集者'],
+            ['u004','福間健太郎',  'viaken1213','viaken1213@gmail.com',     '閲覧者'],
         ];
-        $stmt = $db->prepare("INSERT IGNORE INTO users (id,name,email,role) VALUES(?,?,?,?)");
+        $stmt = $db->prepare("INSERT IGNORE INTO users (id,name,login_id,email,role) VALUES(?,?,?,?,?)");
         foreach ($users as $u) { $stmt->execute($u); }
         $logs[] = 'ユーザー投入 ✓';
 

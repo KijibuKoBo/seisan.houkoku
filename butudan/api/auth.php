@@ -15,7 +15,7 @@ if ($method === 'GET') {
     // ログイン
     require_once __DIR__ . '/db.php';
     $d        = json_decode(file_get_contents('php://input'), true);
-    $email    = trim($d['email']    ?? '');
+    $login_id = trim($d['login_id'] ?? '');
     $password = trim($d['password'] ?? '');
 
     if ($password !== 'kobo7722') {
@@ -26,13 +26,13 @@ if ($method === 'GET') {
 
     try {
         $db   = getDB();
-        $stmt = $db->prepare("SELECT * FROM users WHERE email = ?");
-        $stmt->execute([$email]);
+        $stmt = $db->prepare("SELECT * FROM users WHERE login_id = ?");
+        $stmt->execute([$login_id]);
         $user = $stmt->fetch();
 
         if (!$user) {
             http_response_code(401);
-            echo json_encode(['error' => 'メールアドレスが登録されていません']);
+            echo json_encode(['error' => 'IDが登録されていません']);
             exit;
         }
 

@@ -27,14 +27,14 @@ const api = {
 
 // ===== ログイン =====
 function LoginPage({onLogin}){
-  const [email,setEmail]=useState('');
+  const [loginId,setLoginId]=useState('');
   const [pass,setPass]=useState('');
   const [err,setErr]=useState('');
   const [loading,setLoading]=useState(false);
   async function submit(e){
     e.preventDefault(); setErr(''); setLoading(true);
     try{
-      const r=await fetch('api/auth.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
+      const r=await fetch('api/auth.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login_id:loginId,password:pass})});
       const d=await r.json();
       if(r.ok) onLogin(d.user); else setErr(d.error||'ログインに失敗しました');
     }catch{setErr('通信エラーが発生しました');}
@@ -50,9 +50,9 @@ function LoginPage({onLogin}){
         </div>
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="text-sm text-gray-500 block mb-1">メールアドレス</label>
-            <input type="email" required className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-gray-500"
-              value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" autoComplete="email"/>
+            <label className="text-sm text-gray-500 block mb-1">ID</label>
+            <input type="text" required className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-gray-500"
+              value={loginId} onChange={e=>setLoginId(e.target.value)} placeholder="ID を入力" autoComplete="username"/>
           </div>
           <div>
             <label className="text-sm text-gray-500 block mb-1">パスワード</label>
