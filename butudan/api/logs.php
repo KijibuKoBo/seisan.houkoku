@@ -6,6 +6,15 @@ require_once __DIR__ . '/db.php';
 
 try {
     $db = getDB();
+    $db->exec("CREATE TABLE IF NOT EXISTS logs (
+        id VARCHAR(50) PRIMARY KEY,
+        user_name VARCHAR(100),
+        action VARCHAR(20),
+        target_type VARCHAR(50),
+        target_label VARCHAR(200),
+        detail TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     $m  = $_SERVER['REQUEST_METHOD'];
 
     if ($m === 'GET') {
