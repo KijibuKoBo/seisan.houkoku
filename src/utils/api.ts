@@ -31,15 +31,17 @@ export async function getChangeLogs(): Promise<import('../types').ChangeLogEntry
   } catch { return []; }
 }
 
-// kiji_items のみマージ戦略: ローカル優先・サーバーにない月はサーバーから補完
+// kiji_items 同期戦略: サーバー優先。ローカルにしかない月はローカルから補完し、サーバーへ送り返す。
 function mergeKijiItems(serverJson: string | undefined): void {
   const localJson = localStorage.getItem('matsunaga_kiji_items');
 
   if (!serverJson) {
+    // サーバーにデータなし → ローカルをサーバーへ送信
     if (localJson) apiSet('matsunaga_kiji_items', localJson);
     return;
   }
   if (!localJson) {
+    // ローカルにデータなし → サーバーデータをそのまま使用
     localStorage.setItem('matsunaga_kiji_items', serverJson);
     return;
   }
@@ -47,14 +49,16 @@ function mergeKijiItems(serverJson: string | undefined): void {
   try {
     const server: Record<string, unknown[]> = JSON.parse(serverJson);
     const local:  Record<string, unknown[]> = JSON.parse(localJson);
-    // ローカルを優先、サーバーにしか存在しない月はサーバーから補完
-    const merged = { ...server, ...local };
+    // サーバー優先: ローカルにしかない月はローカルから補完し、サーバーへ送り返す
+    const merged = { ...local, ...server };
     const mergedJson = JSON.stringify(merged);
     localStorage.setItem('matsunaga_kiji_items', mergedJson);
-    apiSet('matsunaga_kiji_items', mergedJson);
+    // ローカルにしかない月があれば補完してサーバーへ送り返す
+    const hasLocalOnly = Object.keys(local).some(k => !(k in server));
+    if (hasLocalOnly) apiSet('matsunaga_kiji_items', mergedJson);
   } catch {
-    // パース失敗時はローカルをそのまま維持
-    apiSet('matsunaga_kiji_items', localJson);
+    // パース失敗時はサーバーデータを使用
+    localStorage.setItem('matsunaga_kiji_items', serverJson);
   }
 }
 

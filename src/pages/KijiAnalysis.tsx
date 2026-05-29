@@ -803,7 +803,7 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
   const [origItems, setOrigItems] = useState<KijiItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState<'no' | 'saving' | 'yes'>('no');
   const [showReport, setShowReport] = useState(false);
 
   // ZIP一括取込
@@ -892,7 +892,7 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
     const active = loaded.filter(i => !i.excluded);
     setTotalCount(md?.kiji.count ?? active.reduce((s, i) => s + i.count, 0));
     setTotalAmount(loaded.reduce((s, i) => s + i.amount, 0));
-    setSaved(false);
+    setSaved('no');
   }, [selYear, selMonth]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const recomputeTotals = (updated: KijiItem[]) => {
@@ -939,7 +939,7 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
     setNewCount(1);
     setNewAmount(0);
     setAmountManual(false);
-    setSaved(false);
+    setSaved('no');
   };
 
   const removeItem = (idx: number) => {
@@ -948,7 +948,7 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
       recomputeTotals(updated);
       return updated;
     });
-    setSaved(false);
+    setSaved('no');
   };
 
   const toggleExcluded = (idx: number) => {
@@ -957,10 +957,11 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
       recomputeTotals(next);
       return next;
     });
-    setSaved(false);
+    setSaved('no');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setSaved('saving');
     for (let i = 0; i < origItems.length; i++) {
       const orig = origItems[i];
       const curr = items[i];
@@ -971,8 +972,9 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
     }
     saveKijiItems(selYear, selMonth, items);
     onSaveMonthKiji(selYear, selMonth, totalCount, totalAmount);
+    await pushKijiToServer();
     setOrigItems(items);
-    setSaved(true);
+    setSaved('yes');
     onRefresh();
   };
 
@@ -1016,11 +1018,11 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
 
       <div className="manage-selectors">
         <label>年：</label>
-        <select value={selYear} onChange={e => { setSelYear(Number(e.target.value)); setSaved(false); }}>
+        <select value={selYear} onChange={e => { setSelYear(Number(e.target.value)); setSaved('no'); }}>
           {yearOptions.map(y => <option key={y} value={y}>令和{y}年</option>)}
         </select>
         <label>月：</label>
-        <select value={selMonth} onChange={e => { setSelMonth(Number(e.target.value)); setSaved(false); }}>
+        <select value={selMonth} onChange={e => { setSelMonth(Number(e.target.value)); setSaved('no'); }}>
           {Array.from({length:12},(_,i)=>i+1).map(m => <option key={m} value={m}>{m}月</option>)}
         </select>
       </div>
@@ -1181,8 +1183,8 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
           📄 木地部月次報告
         </button>
         {canEdit && (
-          <button className="manage-save-btn" onClick={handleSave}>
-            {saved ? '✓ 保存しました' : '月次データに反映'}
+          <button className="manage-save-btn" onClick={handleSave} disabled={saved === 'saving'}>
+            {saved === 'saving' ? 'サーバーに保存中...' : saved === 'yes' ? '✓ 保存しました' : '月次データに反映'}
           </button>
         )}
       </div>
