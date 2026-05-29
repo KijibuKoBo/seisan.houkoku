@@ -503,7 +503,7 @@ function ProductModal({product,onSave,onClose}){
 }
 
 // ===== スケジュール（ガントチャート ライン表示）=====
-function Schedule({lots,products}){
+function Schedule({lots,products,assignees}){
   const now=new Date(TODAY);
   const [viewMode,setViewMode]=useState('half');
   const [startDate,setStartDate]=useState(new Date(now.getFullYear(),now.getMonth(),1));
@@ -594,7 +594,7 @@ function Schedule({lots,products}){
       <div className="flex gap-3">
         <input className="flex-1 border border-gray-200 rounded-lg px-4 py-2 text-sm" placeholder="製品名・ロット番号・納品先で検索..." value={search} onChange={e=>setSearch(e.target.value)}/>
         <select value={assigneeF} onChange={e=>setAssigneeF(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
-          <option>すべて</option>{ASSIGNEES.map(a=><option key={a}>{a}</option>)}
+          <option>すべて</option>{assignees.map(a=><option key={a.id}>{a.name}</option>)}
         </select>
       </div>
 
@@ -1012,7 +1012,7 @@ function App(){
         )}
         {page==='issues'   && <IssueList issues={issues} products={products} defaultFilter={issueDefaultFilter} onEditIssue={iss=>setEditingIssue(iss)}/>}
         {page==='products' && <ProductMaster products={products} onSaveProduct={handleSaveProduct} onDeleteProduct={handleDeleteProduct}/>}
-        {page==='schedule' && <Schedule lots={lots} products={products}/>}
+        {page==='schedule' && <Schedule lots={lots} products={products} assignees={assignees}/>}
         {page==='settings' && <Settings parts={parts} users={users} assignees={assignees} onAddPart={handleAddPart} onDeletePart={handleDeletePart} onUpdateUser={handleUpdateUser} onAddAssignee={handleAddAssignee} onEditAssignee={handleEditAssignee} onDeleteAssignee={handleDeleteAssignee} currentUser={currentUser}/>}
       </main>
 
