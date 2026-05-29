@@ -96,13 +96,15 @@ const NAV=[
   {id:'settings', label:'設定',          icon:'⚙'},
 ];
 function Sidebar({page,onNav,user,onLogout}){
+  const isAdmin=user?.email===ADMIN_EMAIL;
+  const nav=NAV.filter(n=>n.id!=='settings'||isAdmin);
   return(
     <div className="w-52 min-h-screen bg-gray-900 text-white flex flex-col flex-shrink-0">
       <div className="p-4 flex items-center gap-2 border-b border-gray-700">
         <span className="text-xl">⊡</span><span className="font-bold">ロット管理</span>
       </div>
       <nav className="flex-1 p-2 space-y-0.5">
-        {NAV.map(n=>(
+        {nav.map(n=>(
           <button key={n.id} onClick={()=>onNav(n.id)}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${page===n.id?'bg-gray-700 text-white':'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>
             <span>{n.icon}</span><span>{n.label}</span>
@@ -1023,7 +1025,7 @@ function App(){
         {page==='issues'   && <IssueList issues={issues} products={products} defaultFilter={issueDefaultFilter} onEditIssue={iss=>setEditingIssue(iss)}/>}
         {page==='products' && <ProductMaster products={products} onSaveProduct={handleSaveProduct} onDeleteProduct={handleDeleteProduct}/>}
         {page==='schedule' && <Schedule lots={lots} products={products} assignees={assignees}/>}
-        {page==='settings' && <Settings parts={parts} users={users} assignees={assignees} onAddPart={handleAddPart} onDeletePart={handleDeletePart} onUpdateUser={handleUpdateUser} onAddAssignee={handleAddAssignee} onEditAssignee={handleEditAssignee} onDeleteAssignee={handleDeleteAssignee} currentUser={currentUser}/>}
+        {page==='settings' && (currentUser?.email===ADMIN_EMAIL ? <Settings parts={parts} users={users} assignees={assignees} onAddPart={handleAddPart} onDeletePart={handleDeletePart} onUpdateUser={handleUpdateUser} onAddAssignee={handleAddAssignee} onEditAssignee={handleEditAssignee} onDeleteAssignee={handleDeleteAssignee} currentUser={currentUser}/> : <div className="p-6 text-gray-400">アクセス権限がありません</div>)}
       </main>
 
       {/* ロット追加 */}
