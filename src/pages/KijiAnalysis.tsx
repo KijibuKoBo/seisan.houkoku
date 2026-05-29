@@ -901,7 +901,7 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
     setTotalAmount(updated.reduce((s, i) => s + i.amount, 0));  // 本数に含まない品目も金額には含む
   };
 
-  const updateItem = (idx: number, field: 'category' | 'name' | 'count' | 'amount', value: string | number) => {
+  const updateItem = (idx: number, field: 'code' | 'category' | 'name' | 'count' | 'amount', value: string | number) => {
     setItems(prev => {
       const next = prev.map((item, i) => i === idx ? { ...item, [field]: value } : item);
       if (field === 'count' || field === 'amount') recomputeTotals(next);
@@ -1106,7 +1106,12 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
           <tbody>
             {items.map((item, idx) => (
               <tr key={idx} className={item.excluded ? 'excluded-row' : ''}>
-                <td>{item.code}</td>
+                <td>
+                  {canEdit ? (
+                    <input className="manage-input code-input" value={item.code ?? ''}
+                      onChange={e => updateItem(idx, 'code', e.target.value)} />
+                  ) : item.code}
+                </td>
                 <td>
                   {canEdit ? (
                     <select className="manage-input" value={item.category}

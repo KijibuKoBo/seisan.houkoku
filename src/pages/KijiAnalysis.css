@@ -196,6 +196,9 @@
 .manage-table input.name-input {
   width: 160px;
 }
+.manage-table input.code-input {
+  width: 60px;
+}
 .manage-table tr.excluded-row td {
   color: #aaa;
   font-style: italic;
