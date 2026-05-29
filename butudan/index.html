@@ -729,7 +729,7 @@ function Settings({parts,users,assignees,onAddPart,onDeletePart,onUpdateUser,onA
           <table className="w-full">
             <thead><tr className="text-xs text-gray-500 border-b border-gray-100"><th className="text-left p-3 font-medium">担当者名</th><th className="w-24"/></tr></thead>
             <tbody>
-              {assignees.map(a=>(
+              {assignees.filter(a=>a&&a.id).map(a=>(
                 <tr key={a.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="p-3 text-sm">
                     {editingAssignee?.id===a.id?(
@@ -984,9 +984,18 @@ function App(){
   async function handleUpdateUser(id,role){ await api.put('api/users.php',{id,role}); setUsers(p=>p.map(u=>u.id===id?{...u,role}:u)); }
 
   // Assignee CRUD
-  async function handleAddAssignee(data){ const c=await api.post('api/assignees.php',data); setAssignees(p=>[...p,c]); }
-  async function handleEditAssignee(data){ await api.put('api/assignees.php',data); setAssignees(p=>p.map(a=>a.id===data.id?{...a,...data}:a)); }
-  async function handleDeleteAssignee(id){ await api.delete(`api/assignees.php?id=${encodeURIComponent(id)}`); setAssignees(p=>p.filter(a=>a.id!==id)); }
+  async function handleAddAssignee(data){
+    try{ const c=await api.post('api/assignees.php',data); if(c&&c.id) setAssignees(p=>[...p,c]); else alert('担当者の追加に失敗しました。セットアップを実行してください。'); }
+    catch{ alert('担当者の追加に失敗しました。セットアップを実行してください。'); }
+  }
+  async function handleEditAssignee(data){
+    try{ await api.put('api/assignees.php',data); setAssignees(p=>p.map(a=>a&&a.id===data.id?{...a,...data}:a)); }
+    catch{ alert('担当者の更新に失敗しました。'); }
+  }
+  async function handleDeleteAssignee(id){
+    try{ await api.delete(`api/assignees.php?id=${encodeURIComponent(id)}`); setAssignees(p=>p.filter(a=>a&&a.id!==id)); }
+    catch{ alert('担当者の削除に失敗しました。'); }
+  }
 
   // ===== 表示 =====
   if(!authChecked||loading){
