@@ -928,9 +928,10 @@ function App(){
       api.get('api/issues.php'),
       api.get('api/parts.php'),
       api.get('api/users.php'),
-      api.get('api/assignees.php'),
+      api.get('api/assignees.php').catch(()=>[]),
     ]).then(([prods,ls,iss,pts,us,asgn])=>{
-      setProducts(prods);setLots(ls);setIssues(iss);setParts(pts);setUsers(us);setAssignees(asgn);
+      setProducts(prods);setLots(ls);setIssues(iss);setParts(pts);setUsers(us);
+      setAssignees(Array.isArray(asgn)?asgn:[]);
     }).catch(e=>{if(e.code==='UNAUTHORIZED'){setCurrentUser(null);}})
       .finally(()=>{setAuthChecked(true);setLoading(false);});
   }

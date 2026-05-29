@@ -294,9 +294,9 @@ function App(){
       api.get('api/products.php'),
       api.get('api/lots.php'),
       api.get('api/parts.php'),
-      api.get('api/assignees.php'),
+      api.get('api/assignees.php').catch(()=>[]),
     ]).then(([prods,ls,pts,asgn])=>{
-      setProducts(prods); setLots(ls); setParts(pts); setAssignees(asgn);
+      setProducts(prods); setLots(ls); setParts(pts); setAssignees(Array.isArray(asgn)?asgn:[]);
     }).catch(e=>{ if(e.code==='UNAUTHORIZED') setUser(null); })
       .finally(()=>{ setAuthChecked(true); setLoading(false); });
   }
