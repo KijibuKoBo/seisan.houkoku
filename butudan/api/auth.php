@@ -26,9 +26,17 @@ if ($method === 'GET') {
 
     try {
         $db   = getDB();
-        $stmt = $db->prepare("SELECT * FROM users WHERE login_id = ?");
-        $stmt->execute([$login_id]);
-        $user = $stmt->fetch();
+        // login_idカラムがあればlogin_idで、なければemailで検索
+        try {
+            $stmt = $db->prepare("SELECT * FROM users WHERE login_id = ?");
+            $stmt->execute([$login_id]);
+            $user = $stmt->fetch();
+        } catch (Exception $e) {
+            // login_idカラムなし→emailで検索（移行期対応）
+            $stmt = $db->prepare("SELECT * FROM users WHERE email = ?");
+            $stmt->execute([$login_id]);
+            $user = $stmt->fetch();
+        }
 
         if (!$user) {
             http_response_code(401);
