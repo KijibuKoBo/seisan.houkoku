@@ -103,12 +103,14 @@ if (isset($_POST['run'])) {
         $logs[] = 'テーブル作成 ✓';
 
         // ===== カラム追加（既存テーブルへの追記） =====
-        $alters = [
-            "ALTER TABLE users ADD COLUMN IF NOT EXISTS login_id VARCHAR(100) AFTER name",
-            "ALTER TABLE assignees ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0 AFTER name",
-        ];
-        foreach ($alters as $sql) {
-            try { $db->exec($sql); } catch (Exception $e) { /* 既存なら無視 */ }
+        $colCheck = $db->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?");
+        $colCheck->execute(['users','login_id']);
+        if($colCheck->fetchColumn()==0){
+            $db->exec("ALTER TABLE users ADD COLUMN login_id VARCHAR(100) AFTER name");
+        }
+        $colCheck->execute(['assignees','sort_order']);
+        if($colCheck->fetchColumn()==0){
+            $db->exec("ALTER TABLE assignees ADD COLUMN sort_order INT DEFAULT 0 AFTER name");
         }
         $logs[] = 'カラム追加 ✓';
 
