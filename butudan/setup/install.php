@@ -102,6 +102,16 @@ if (isset($_POST['run'])) {
         }
         $logs[] = 'テーブル作成 ✓';
 
+        // ===== カラム追加（既存テーブルへの追記） =====
+        $alters = [
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS login_id VARCHAR(100) AFTER name",
+            "ALTER TABLE assignees ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0 AFTER name",
+        ];
+        foreach ($alters as $sql) {
+            try { $db->exec($sql); } catch (Exception $e) { /* 既存なら無視 */ }
+        }
+        $logs[] = 'カラム追加 ✓';
+
         // ===== サンプルデータ投入 =====
 
         // 製品
