@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { YearStore, MonthData, SalesData } from '../types';
 import './MonthlyReport.css';
 
@@ -180,6 +180,10 @@ export default function MonthlyReport({ store, defaultYear, defaultMonth, onClos
 
   const [selYear, setSelYear]   = useState(defaultYear);
   const [selMonth, setSelMonth] = useState(defaultMonth ?? new Date().getMonth() + 1);
+  const [orient, setOrient]     = useState<'portrait' | 'landscape'>('portrait');
+  const [pdfLoading, setPdfLoading]   = useState(false);
+  const [lineLoading, setLineLoading] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   const cur   = store[selYear]?.[selMonth]      ?? null;
   const prevM = selMonth === 1
@@ -193,6 +197,67 @@ export default function MonthlyReport({ store, defaultYear, defaultMonth, onClos
   const stPct   = calcPct(stCur, stPrevY);
   const today   = new Date().toLocaleDateString('ja-JP');
   const points  = genPoints(cur, prevY);
+
+  const fileName = `月次報告書_令和${selYear}年${selMonth}月.pdf`;
+
+  const buildPdfBlob = async (): Promise<Blob> => {
+    const el = modalRef.current!;
+    const hidden = Array.from(el.querySelectorAll<HTMLElement>('.no-print'));
+    hidden.forEach(e => { e.style.display = 'none'; });
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const jsPDF = (await import('jspdf')).default;
+      const canvas = await html2canvas(el, { scale: 1.5, useCORS: true, backgroundColor: '#fff' });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: orient, unit: 'mm', format: 'a4' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const aspect = canvas.width / canvas.height;
+      let w = pageW; let h = pageW / aspect;
+      if (h > pageH) { h = pageH; w = pageH * aspect; }
+      pdf.addImage(imgData, 'PNG', (pageW - w) / 2, (pageH - h) / 2, w, h);
+      return pdf.output('blob');
+    } finally {
+      hidden.forEach(e => { e.style.display = ''; });
+    }
+  };
+
+  const handlePdfExport = async () => {
+    if (!modalRef.current) return;
+    setPdfLoading(true);
+    try {
+      const blob = await buildPdfBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = fileName; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } finally { setPdfLoading(false); }
+  };
+
+  const handleLineShare = async () => {
+    if (!modalRef.current) return;
+    setLineLoading(true);
+    try {
+      const blob = await buildPdfBlob();
+      const file = new File([blob], fileName, { type: 'application/pdf' });
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: fileName });
+      } else {
+        alert('このブラウザはファイル共有に対応していません。\nPDF出力してLINEから送信してください。');
+      }
+    } finally { setLineLoading(false); }
+  };
+
+  const handlePrint = () => {
+    const style = document.createElement('style');
+    style.textContent = `@page { size: A4 ${orient}; margin: 9mm; }`;
+    document.head.appendChild(style);
+    document.body.classList.add('mr-printing');
+    window.addEventListener('afterprint', () => {
+      document.body.classList.remove('mr-printing');
+      document.head.removeChild(style);
+    }, { once: true });
+    window.print();
+  };
 
   const channelLabel = (ch: typeof CHANNELS[0]) =>
     ch.key === 'bukken' && cur?.salesMemo?.bukken
@@ -208,7 +273,7 @@ export default function MonthlyReport({ store, defaultYear, defaultMonth, onClos
 
   return (
     <div className="mr-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="mr-modal">
+      <div className="mr-modal" ref={modalRef}>
 
         {/* ── Header ── */}
         <div className="mr-header">
@@ -227,11 +292,25 @@ export default function MonthlyReport({ store, defaultYear, defaultMonth, onClos
                 {Array.from({length:12},(_,i)=>i+1).map(m =>
                   <option key={m} value={m}>{m}月</option>)}
               </select>
-              <button className="mr-print-btn" onClick={() => {
-                document.body.classList.add('mr-printing');
-                window.addEventListener('afterprint', () => document.body.classList.remove('mr-printing'), { once: true });
-                window.print();
-              }}>🖨 印刷する</button>
+              <div className="mr-orient-toggle">
+                <button
+                  className={`mr-orient-btn ${orient === 'portrait' ? 'active' : ''}`}
+                  onClick={() => setOrient('portrait')}
+                  title="縦向き"
+                >縦</button>
+                <button
+                  className={`mr-orient-btn ${orient === 'landscape' ? 'active' : ''}`}
+                  onClick={() => setOrient('landscape')}
+                  title="横向き"
+                >横</button>
+              </div>
+              <button className="mr-print-btn" onClick={handlePrint}>🖨 印刷</button>
+              <button className="mr-print-btn" onClick={handlePdfExport} disabled={pdfLoading}>
+                {pdfLoading ? '生成中...' : '📄 PDF'}
+              </button>
+              <button className="mr-print-btn mr-line-btn" onClick={handleLineShare} disabled={lineLoading}>
+                {lineLoading ? '生成中...' : '📤 LINE'}
+              </button>
               <button className="mr-close-btn" onClick={onClose}>✕</button>
             </div>
           </div>

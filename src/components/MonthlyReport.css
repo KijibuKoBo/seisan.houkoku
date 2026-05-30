@@ -83,8 +83,28 @@
 }
 .mr-hcontrols select option { background: #1a3a5c; color: white; }
 
+.mr-orient-toggle {
+  display: flex;
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.mr-orient-btn {
+  padding: 5px 10px;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.75);
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  border-right: 1px solid rgba(255,255,255,0.25);
+}
+.mr-orient-btn:last-child { border-right: none; }
+.mr-orient-btn.active { background: rgba(255,255,255,0.3); color: white; font-weight: bold; }
+.mr-orient-btn:hover:not(.active) { background: rgba(255,255,255,0.2); }
+
 .mr-print-btn {
-  padding: 6px 14px;
+  padding: 6px 12px;
   background: rgba(255,255,255,0.18);
   color: white;
   border: 1px solid rgba(255,255,255,0.35);
@@ -94,6 +114,9 @@
   font-family: inherit;
 }
 .mr-print-btn:hover { background: rgba(255,255,255,0.28); }
+.mr-print-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.mr-line-btn { background: rgba(0,185,0,0.22); border-color: rgba(0,220,0,0.45); }
+.mr-line-btn:hover { background: rgba(0,185,0,0.38); }
 
 .mr-close-btn {
   padding: 6px 10px;
