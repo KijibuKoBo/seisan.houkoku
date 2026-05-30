@@ -42,6 +42,11 @@ function saveUsers(users: User[]): void {
   apiSet(USERS_KEY, json);
 }
 
+export async function pushUsersToServer(): Promise<void> {
+  const json = localStorage.getItem(USERS_KEY);
+  if (json) await apiSet(USERS_KEY, json);
+}
+
 export async function initDefaultUsers(): Promise<void> {
   try {
     const existing = loadUsers();

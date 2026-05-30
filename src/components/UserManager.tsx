@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User, Role } from '../types';
-import { loadUsers, addUser, changePassword, updateUser, deleteUser } from '../utils/auth';
+import { loadUsers, addUser, changePassword, updateUser, deleteUser, pushUsersToServer } from '../utils/auth';
 
 export default function UserManager() {
   const [users, setUsers] = useState<User[]>([]);
@@ -8,6 +8,7 @@ export default function UserManager() {
   const [pwForm, setPwForm] = useState<{ userId: string; pw: string } | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const refresh = () => setUsers(loadUsers());
   useEffect(() => { refresh(); }, []);
@@ -17,40 +18,60 @@ export default function UserManager() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSaving(true);
     try {
       await addUser(form.id, form.password, form.displayName, form.role);
+      await pushUsersToServer();
       setForm({ id: '', password: '', displayName: '', role: 'viewer' });
       refresh();
       notify('ユーザーを追加しました');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleChangePw = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pwForm) return;
+    setSaving(true);
     try {
       await changePassword(pwForm.userId, pwForm.pw);
+      await pushUsersToServer();
       setPwForm(null);
       notify('パスワードを変更しました');
     } catch {
       setError('パスワード変更に失敗しました');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleRoleChange = (userId: string, role: Role) => {
-    updateUser(userId, { role });
-    refresh();
-    notify('権限を変更しました');
+  const handleRoleChange = async (userId: string, role: Role) => {
+    setSaving(true);
+    try {
+      updateUser(userId, { role });
+      await pushUsersToServer();
+      refresh();
+      notify('権限を変更しました');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDelete = (userId: string) => {
+  const handleDelete = async (userId: string) => {
     if (userId === 'admin') { setError('adminユーザーは削除できません'); return; }
     if (!confirm(`ユーザー「${userId}」を削除しますか？`)) return;
-    deleteUser(userId);
-    refresh();
-    notify('ユーザーを削除しました');
+    setSaving(true);
+    try {
+      deleteUser(userId);
+      await pushUsersToServer();
+      refresh();
+      notify('ユーザーを削除しました');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -147,7 +168,9 @@ export default function UserManager() {
               <option value="admin">管理者</option>
             </select>
           </div>
-          <button type="submit" className="btn-primary">追加</button>
+          <button type="submit" className="btn-primary" disabled={saving}>
+            {saving ? 'サーバーに保存中...' : '追加'}
+          </button>
         </form>
       </section>
     </div>
