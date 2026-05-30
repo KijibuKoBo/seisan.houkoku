@@ -10,6 +10,30 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   body { font-family: 'Hiragino Sans', 'Meiryo', 'Yu Gothic', sans-serif; }
+
+  /* ===== ガントチャート A3横印刷 ===== */
+  @media print {
+    @page { size: A3 landscape; margin: 8mm; }
+    body { background: #fff !important; }
+    /* 印刷対象以外を隠す */
+    body * { visibility: hidden; }
+    #gantt-print, #gantt-print * { visibility: visible; }
+    #gantt-print {
+      position: absolute; left: 0; top: 0; width: 100%;
+      padding: 0 !important;
+    }
+    /* 操作系は印刷しない */
+    .no-print { display: none !important; }
+    /* 色を確実に印刷（背景色・色付きバー） */
+    #gantt-print * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    /* 横スクロール用の最小幅を解除して用紙幅に収める */
+    #gantt-print .gantt-scroll { min-width: 0 !important; }
+    /* 影や角丸は印刷で不要 */
+    #gantt-print .shadow-sm { box-shadow: none !important; }
+  }
 </style>
 </head>
 <body class="bg-gray-100">
@@ -582,14 +606,14 @@ function Schedule({lots,products,assignees}){
   }
 
   return(
-    <div className="p-6 space-y-4">
+    <div id="gantt-print" className="p-6 space-y-4">
       <div className="bg-gray-900 text-white rounded-xl p-5">
         <div className="flex justify-between items-center">
           <div>
             <div className="font-bold text-lg">▦ 生産管理ガントチャート</div>
             <div className="text-gray-300 text-sm mt-1">{startDate.getFullYear()}年{startDate.getMonth()+1}月 〜 {endDate.getFullYear()}年{endDate.getMonth()}月</div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 no-print">
             <div className="flex rounded-lg overflow-hidden border border-gray-600">
               <button onClick={()=>setViewMode('1month')} className={`px-3 py-1.5 text-sm ${viewMode==='1month'?'bg-gray-600':''}`}>1ヶ月</button>
               <button onClick={()=>setViewMode('half')} className={`px-3 py-1.5 text-sm ${viewMode==='half'?'bg-gray-600':''}`}>半年</button>
@@ -597,7 +621,7 @@ function Schedule({lots,products,assignees}){
             <button onClick={()=>{const d=new Date(startDate);d.setMonth(d.getMonth()-1);setStartDate(d);}} className="px-2 py-1 hover:bg-gray-700 rounded text-sm">←</button>
             <button onClick={()=>setStartDate(new Date(now.getFullYear(),now.getMonth(),1))} className="px-3 py-1 text-sm hover:bg-gray-700 rounded">今月</button>
             <button onClick={()=>{const d=new Date(startDate);d.setMonth(d.getMonth()+1);setStartDate(d);}} className="px-2 py-1 hover:bg-gray-700 rounded text-sm">→</button>
-            <button className="px-3 py-1.5 bg-orange-500 rounded text-sm font-medium hover:bg-orange-400">A3印刷</button>
+            <button onClick={()=>window.print()} className="px-3 py-1.5 bg-orange-500 rounded text-sm font-medium hover:bg-orange-400">🖨 A3印刷 / PDF</button>
           </div>
         </div>
       </div>
@@ -611,7 +635,7 @@ function Schedule({lots,products,assignees}){
         ))}
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 no-print">
         <input className="flex-1 border border-gray-200 rounded-lg px-4 py-2 text-sm" placeholder="製品名・ロット番号・納品先で検索..." value={search} onChange={e=>setSearch(e.target.value)}/>
         <select value={assigneeF} onChange={e=>setAssigneeF(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
           <option>すべて</option>{assignees.map(a=><option key={a.id}>{a.name}</option>)}
@@ -627,7 +651,7 @@ function Schedule({lots,products,assignees}){
       </div>
 
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div style={{minWidth:'700px'}}>
+        <div className="gantt-scroll" style={{minWidth:'700px'}}>
           {/* 月ヘッダー */}
           <div className="flex border-b border-gray-200 bg-gray-800 text-white text-sm font-semibold">
             <div className="w-44 flex-shrink-0 p-3 border-r border-gray-600">製品</div>
