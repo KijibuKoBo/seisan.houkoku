@@ -37,16 +37,17 @@ export default function App() {
   const [showChangeLog, setShowChangeLog] = useState(false);
 
   useEffect(() => {
-    initDefaultUsers();
-    syncFromServer()
-      .then(() => setSyncError(false))
-      .catch(() => setSyncError(true))
-      .finally(() => {
-        migrateCategories();
-        seedCostDatabaseIfEmpty();
-        setStore(loadStore());
-        setSyncing(false);
-      });
+    initDefaultUsers().then(() => {
+      syncFromServer()
+        .then(() => setSyncError(false))
+        .catch(() => setSyncError(true))
+        .finally(() => {
+          migrateCategories();
+          seedCostDatabaseIfEmpty();
+          setStore(loadStore());
+          setSyncing(false);
+        });
+    });
   }, []);
 
   const availableYears = Array.from(
