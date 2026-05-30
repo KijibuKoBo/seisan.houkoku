@@ -67,7 +67,7 @@ function LoginPage({onLogin}){
         <form onSubmit={submit} className="space-y-4">
           <div>
             <label className="text-xs text-gray-500 block mb-1">ID</label>
-            <input type="text" required className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400"
+            <input type="text" required autoFocus className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400"
               value={loginId} onChange={e=>setLoginId(e.target.value)} placeholder="ID を入力"/>
           </div>
           <div>
@@ -75,7 +75,7 @@ function LoginPage({onLogin}){
             <input type="password" required className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400"
               value={pass} onChange={e=>setPass(e.target.value)}/>
           </div>
-          {err&&<div className="text-red-500 text-xs bg-red-50 px-3 py-2 rounded-lg">{err}</div>}
+          {err&&<div className="text-red-600 text-sm font-medium bg-red-50 px-3 py-2 rounded-lg">{err}</div>}
           <button type="submit" disabled={loading}
             className="w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-gray-700 transition-colors">
             {loading?'ログイン中...':'ログイン'}
@@ -263,7 +263,7 @@ function LotList({lots,products,issues,onLot,onAddLot}){
         <button onClick={onAddLot} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-700">+ ロット追加</button>
       </div>
       <div className="flex gap-3 mb-4">
-        <input className="flex-1 border border-gray-200 rounded-lg px-4 py-2 text-sm" placeholder="製品名・ロット番号・出荷先・担当者で検索..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <input className="flex-1 border border-gray-200 rounded-lg px-4 py-2 text-sm" placeholder="製品名・ロット番号・担当者で検索..." value={search} onChange={e=>setSearch(e.target.value)}/>
         <select value={filter} onChange={e=>setFilter(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
           <option>すべて</option>{LOT_STATUSES.map(s=><option key={s}>{s}</option>)}
         </select>
@@ -357,9 +357,6 @@ function LotDetail({lot,lots,products,issues,onBack,onAddIssue,onEditLot,onEditI
         <button onClick={()=>setTab('past')} className={`px-4 py-2 rounded-lg text-sm ${tab==='past'?'bg-amber-600 text-white':'bg-white border border-amber-200 text-amber-700 hover:bg-amber-50'}`}>
           同製品の過去の記録 ({pastIssues.length})
         </button>
-        <button onClick={()=>setTab('images')} className={`px-4 py-2 rounded-lg text-sm ${tab==='images'?'bg-gray-900 text-white':'bg-white border border-gray-200 hover:bg-gray-50'}`}>
-          画像 (0)
-        </button>
       </div>
       {tab==='issues'&&<>
         <button onClick={onAddIssue} className="mb-4 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-700">+ 改善・注意点を追加</button>
@@ -386,7 +383,6 @@ function LotDetail({lot,lots,products,issues,onBack,onAddIssue,onEditLot,onEditI
           {pastIssues.length===0&&<div className="text-center text-gray-400 py-10">同製品の過去の記録はありません</div>}
         </div>
       )}
-      {tab==='images'&&<div className="text-center text-gray-400 py-10">画像なし</div>}
     </div>
   );
 }
@@ -447,7 +443,7 @@ function IssueList({issues,products,defaultFilter,onEditIssue}){
         ))}
       </div>
       <div className="flex gap-3 mb-4">
-        <input className="flex-1 border border-gray-200 rounded-lg px-4 py-2 text-sm" placeholder="キーワード検索（内容・部品・原因・改善方法など）..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <input className="flex-1 border border-gray-200 rounded-lg px-4 py-2 text-sm" placeholder="内容・部品・原因・改善方法で検索..." value={search} onChange={e=>setSearch(e.target.value)}/>
         <select value={prodF} onChange={e=>setProdF(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
           <option>すべて</option>{products.map(p=><option key={p.id}>{p.name}</option>)}
         </select>
@@ -1016,17 +1012,20 @@ function App(){
 
   function loadData(){
     Promise.all([
-      api.get('api/products.php'),
-      api.get('api/lots.php'),
-      api.get('api/issues.php'),
-      api.get('api/parts.php'),
-      api.get('api/users.php'),
+      api.get('api/products.php').catch(()=>[]),
+      api.get('api/lots.php').catch(()=>[]),
+      api.get('api/issues.php').catch(()=>[]),
+      api.get('api/parts.php').catch(()=>[]),
+      api.get('api/users.php').catch(()=>[]),
       api.get('api/assignees.php').catch(()=>[]),
     ]).then(([prods,ls,iss,pts,us,asgn])=>{
-      setProducts(prods);setLots(ls);setIssues(iss);setParts(pts);setUsers(us);
+      setProducts(Array.isArray(prods)?prods:[]);
+      setLots(Array.isArray(ls)?ls:[]);
+      setIssues(Array.isArray(iss)?iss:[]);
+      setParts(Array.isArray(pts)?pts:[]);
+      setUsers(Array.isArray(us)?us:[]);
       setAssignees(Array.isArray(asgn)?asgn:[]);
-    }).catch(e=>{if(e.code==='UNAUTHORIZED'){setCurrentUser(null);}})
-      .finally(()=>{setAuthChecked(true);setLoading(false);});
+    }).finally(()=>{setAuthChecked(true);setLoading(false);});
   }
 
   async function handleLogin(user){ setCurrentUser(user); setLoading(true); loadData(); }
