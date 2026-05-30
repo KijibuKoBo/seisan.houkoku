@@ -220,6 +220,12 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
   const [productCatFilter, setProductCatFilter] = useState<string | null>(null);
 
   const handleProductEditSave = () => {
+    const changedCount = Object.entries(productEdits).filter(([key, edit]) => {
+      const product = products.find(p => p.key === key);
+      return product && (product.category !== edit.category || product.name !== edit.name);
+    }).length;
+    if (changedCount === 0) { setProductEditMode(false); return; }
+    if (!window.confirm(`${changedCount}件の品目を全月にわたって一括変更します。よろしいですか？`)) return;
     for (const [key, edit] of Object.entries(productEdits)) {
       const product = products.find(p => p.key === key);
       if (!product) continue;
@@ -248,6 +254,10 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
 
   const maxCount = products[0]?.totalCount ?? 1;
   const maxAmount = products[0]?.totalAmount ?? 1;
+
+  const sortedProductsByCount  = useMemo(() => [...products].sort((a, b) => b.totalCount  - a.totalCount),  [products]);
+  const sortedProductsByAmount = useMemo(() => [...products].sort((a, b) => b.totalAmount - a.totalAmount), [products]);
+  const sortedProducts = rankBy === 'count' ? sortedProductsByCount : sortedProductsByAmount;
 
   const toggleYear = (y: number) => {
     setSelectedYears(prev =>
@@ -311,8 +321,7 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
                 <h3 className="section-title">製品 Top10
                   <span className="title-sub">（クリックで製品詳細）</span>
                 </h3>
-                {[...products]
-                  .sort((a, b) => rankBy === 'count' ? b.totalCount - a.totalCount : b.totalAmount - a.totalAmount)
+                {sortedProducts
                   .slice(0, 10)
                   .map((p, i) => (
                     <HBar
@@ -882,7 +891,8 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
   const [newUnitPrice, setNewUnitPrice] = useState(0);
   const [amountManual, setAmountManual] = useState(false);
 
-  const filteredProducts = loadCostDatabase().filter(p => p.category === newCategory);
+  const costDb = useMemo(() => loadCostDatabase(), []);
+  const filteredProducts = useMemo(() => costDb.filter(p => p.category === newCategory), [costDb, newCategory]);
 
   useEffect(() => {
     const loaded = loadKijiItems(selYear, selMonth);
@@ -893,7 +903,7 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
     setTotalCount(md?.kiji.count ?? active.reduce((s, i) => s + i.count, 0));
     setTotalAmount(loaded.reduce((s, i) => s + i.amount, 0));
     setSaved('no');
-  }, [selYear, selMonth]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selYear, selMonth, store]);
 
   const recomputeTotals = (updated: KijiItem[]) => {
     const active = updated.filter(i => !i.excluded);

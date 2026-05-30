@@ -3,10 +3,8 @@ import { YearStore, MonthData, AuthSession, KijiItem } from './types';
 import { loadStore, saveStore, setMonthData } from './utils/store';
 import { initDefaultUsers, getSession, logout } from './utils/auth';
 import { saveKijiItems, migrateCategories, pushKijiToServer } from './utils/kijiStore';
-migrateCategories();
 import { syncFromServer, logChange, getChangeLogs } from './utils/api';
 import { seedCostDatabaseIfEmpty } from './utils/costStore';
-seedCostDatabaseIfEmpty();
 import YearlyTable, { CompactSummary } from './components/YearlyTable';
 import MonthModal from './components/MonthModal';
 import LoginPage from './components/LoginPage';
@@ -33,18 +31,22 @@ export default function App() {
   const [editingMonth, setEditingMonth] = useState<number | null>(null);
   const [page, setPage] = useState<Page>('report');
   const [syncing, setSyncing] = useState(true);
+  const [syncError, setSyncError] = useState(false);
   const [showYearlyReport, setShowYearlyReport] = useState(false);
   const [showKijiReport, setShowKijiReport] = useState(false);
   const [showChangeLog, setShowChangeLog] = useState(false);
 
   useEffect(() => {
     initDefaultUsers();
-    syncFromServer().finally(() => {
-      migrateCategories();
-      seedCostDatabaseIfEmpty();
-      setStore(loadStore());
-      setSyncing(false);
-    });
+    syncFromServer()
+      .then(() => setSyncError(false))
+      .catch(() => setSyncError(true))
+      .finally(() => {
+        migrateCategories();
+        seedCostDatabaseIfEmpty();
+        setStore(loadStore());
+        setSyncing(false);
+      });
   }, []);
 
   const availableYears = Array.from(
@@ -80,7 +82,6 @@ export default function App() {
       pushKijiToServer();
     }
 
-    // Build change summary
     const labels: Record<string, string> = {
       otsuka: '大塚', takumi: '匠', butsudan: '仏壇',
       ippanten: '一般店', showroom: '直販', bukken: 'その他',
@@ -158,6 +159,11 @@ export default function App() {
           </nav>
         </div>
         <div className="header-right">
+          {syncError && (
+            <span style={{ fontSize: 11, color: '#ffcccc', marginRight: 8 }}>
+              ⚠ サーバー接続エラー（ローカルデータで表示中）
+            </span>
+          )}
           <span className="session-info">
             {session.displayName}
             {session.role === 'admin' && <span className="role-badge">管理者</span>}
