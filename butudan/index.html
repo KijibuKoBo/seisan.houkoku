@@ -916,10 +916,10 @@ function LotModal({lot,products,assignees,onSave,onDelete,onClose}){
         </div>
         <div className="flex gap-3 mt-5">
           {lot&&onDelete&&(
-            <button onClick={async()=>{if(deleting||!window.confirm('このロットを削除しますか？\n関連する改善記録も削除されます。'))return;setDeleting(true);await onDelete(lot.id);setDeleting(false);}} disabled={deleting} className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm disabled:opacity-50 hover:bg-red-600">{deleting?'削除中...':'🗑 削除'}</button>
+            <button onClick={async()=>{if(deleting||!window.confirm('このロットを削除しますか？\n関連する改善記録も削除されます。'))return;setDeleting(true);onDelete(lot.id);}} disabled={deleting} className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm disabled:opacity-50 hover:bg-red-600">{deleting?'削除中...':'🗑 削除'}</button>
           )}
           <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm">キャンセル</button>
-          <button onClick={async()=>{if(saving)return;setSaving(true);await onSave({...form,lotNumber:parseInt(form.lotNumber)||0});setSaving(false);}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
+          <button onClick={async()=>{if(saving)return;setSaving(true);await onSave({...form,lotNumber:parseInt(form.lotNumber)||null});setSaving(false);}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
         </div>
       </div>
     </div>
@@ -1068,9 +1068,9 @@ function App(){
   // Issue CRUD
   async function handleAddIssue(data){
     const lot=lots.find(l=>l.id===addIssueForLot);
+    const pr=products.find(p=>p.id===lot?.productId);
     const c=await api.post('api/issues.php',{...data,lotId:addIssueForLot,productId:lot?.productId,lotNumber:lot?.lotNumber,date:TODAY});
     setIssues(p=>[...p,c]); setAddIssueForLot(null);
-    const pr=products.find(p=>p.id===lot?.productId);
     writeLog('追加','改善記録',`${pr?.name||'?'} #${lot?.lotNumber||'?'}`,data.description||'');
   }
   async function handleEditIssue(data){

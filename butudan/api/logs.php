@@ -4,17 +4,21 @@ requireAuth();
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/db.php';
 
+$flagFile = __DIR__ . '/../setup/logs_table.flag';
 try {
     $db = getDB();
-    $db->exec("CREATE TABLE IF NOT EXISTS logs (
-        id VARCHAR(50) PRIMARY KEY,
-        user_name VARCHAR(100),
-        action VARCHAR(20),
-        target_type VARCHAR(50),
-        target_label VARCHAR(200),
-        detail TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    if (!file_exists($flagFile)) {
+        $db->exec("CREATE TABLE IF NOT EXISTS logs (
+            id VARCHAR(50) PRIMARY KEY,
+            user_name VARCHAR(100),
+            action VARCHAR(20),
+            target_type VARCHAR(50),
+            target_label VARCHAR(200),
+            detail TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        file_put_contents($flagFile, date('Y-m-d H:i:s'));
+    }
     $m  = $_SERVER['REQUEST_METHOD'];
 
     if ($m === 'GET') {
