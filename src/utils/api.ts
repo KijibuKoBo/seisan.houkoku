@@ -3,6 +3,7 @@ const TOKEN = 'mtsng_api_2024';
 
 const SYNC_KEYS = ['matsunaga_seisan', 'matsunaga_kiji_items', 'matsunaga_users', 'matsunaga_cost_db'] as const;
 
+// fire-and-forget: 失敗してもアプリは継続（kiji/sales用）
 export async function apiSet(key: string, value: string): Promise<void> {
   try {
     await fetch(API, {
@@ -11,6 +12,21 @@ export async function apiSet(key: string, value: string): Promise<void> {
       body: JSON.stringify({ key, value }),
     });
   } catch { /* best effort — app still works via localStorage */ }
+}
+
+// 厳格版: 失敗時に例外を投げる（ユーザー管理など重要操作用）
+export async function apiSetStrict(key: string, value: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Token': TOKEN },
+      body: JSON.stringify({ key, value }),
+    });
+  } catch (e) {
+    throw new Error('サーバーに接続できません。ネットワークを確認してください。');
+  }
+  if (!res.ok) throw new Error(`サーバーエラー (${res.status})。時間をおいて再試行してください。`);
 }
 
 export async function logChange(user: string, year: number, month: number, summary: string): Promise<void> {

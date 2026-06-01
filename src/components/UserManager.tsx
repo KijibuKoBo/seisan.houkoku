@@ -27,6 +27,8 @@ export default function UserManager() {
       notify('ユーザーを追加しました');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
+      // サーバー保存失敗時はローカルも元に戻す
+      refresh();
     } finally {
       setSaving(false);
     }
@@ -41,8 +43,8 @@ export default function UserManager() {
       await pushUsersToServer();
       setPwForm(null);
       notify('パスワードを変更しました');
-    } catch {
-      setError('パスワード変更に失敗しました');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'パスワード変更に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -55,6 +57,9 @@ export default function UserManager() {
       await pushUsersToServer();
       refresh();
       notify('権限を変更しました');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : '権限変更に失敗しました');
+      refresh();
     } finally {
       setSaving(false);
     }
@@ -69,6 +74,9 @@ export default function UserManager() {
       await pushUsersToServer();
       refresh();
       notify('ユーザーを削除しました');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : '削除に失敗しました');
+      refresh();
     } finally {
       setSaving(false);
     }

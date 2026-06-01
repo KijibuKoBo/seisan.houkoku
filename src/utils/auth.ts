@@ -1,5 +1,5 @@
 import { User, AuthSession, Role } from '../types';
-import { apiSet } from './api';
+import { apiSet, apiSetStrict } from './api';
 
 const USERS_KEY = 'matsunaga_users';
 const SESSION_KEY = 'matsunaga_session';
@@ -44,7 +44,7 @@ function saveUsers(users: User[]): void {
 
 export async function pushUsersToServer(): Promise<void> {
   const json = localStorage.getItem(USERS_KEY);
-  if (json) await apiSet(USERS_KEY, json);
+  if (json) await apiSetStrict(USERS_KEY, json);
 }
 
 export async function initDefaultUsers(): Promise<void> {
