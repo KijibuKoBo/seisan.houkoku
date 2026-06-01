@@ -52,13 +52,28 @@ export async function initDefaultUsers(): Promise<void> {
     const existing = loadUsers();
     if (existing.length > 0) return;
     const adminHash = await sha256('admin123');
-    const jimuHash = await sha256('jimu123');
+    const jimuHash  = await sha256('jimu123');
+    const koboHash  = await sha256('7722');
     saveUsers([
       { id: 'admin', passwordHash: adminHash, displayName: '管理者', role: 'admin' },
-      { id: 'jimu', passwordHash: jimuHash, displayName: '事務', role: 'viewer' },
+      { id: 'jimu',  passwordHash: jimuHash,  displayName: '事務',   role: 'viewer' },
+      { id: 'kobo',  passwordHash: koboHash,  displayName: '木地工房', role: 'admin' },
     ]);
   } catch (e) {
     console.error('initDefaultUsers failed:', e);
+  }
+}
+
+// 既存のローカルデータに kobo がいなければ補完する（マイグレーション）
+export async function ensureKoboUser(): Promise<void> {
+  try {
+    const users = loadUsers();
+    if (users.length === 0) return; // initDefaultUsersが処理
+    if (users.find(u => u.id === 'kobo')) return; // すでに存在
+    const koboHash = await sha256('7722');
+    saveUsers([...users, { id: 'kobo', passwordHash: koboHash, displayName: '木地工房', role: 'admin' }]);
+  } catch (e) {
+    console.error('ensureKoboUser failed:', e);
   }
 }
 

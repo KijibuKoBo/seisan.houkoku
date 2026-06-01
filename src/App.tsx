@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { YearStore, MonthData, AuthSession, KijiItem } from './types';
 import { loadStore, saveStore, setMonthData } from './utils/store';
-import { initDefaultUsers, getSession, logout } from './utils/auth';
+import { initDefaultUsers, ensureKoboUser, getSession, logout } from './utils/auth';
 import { saveKijiItems, migrateCategories, pushKijiToServer } from './utils/kijiStore';
 import { syncFromServer, logChange, getChangeLogs } from './utils/api';
 import { seedCostDatabaseIfEmpty } from './utils/costStore';
@@ -37,17 +37,21 @@ export default function App() {
   const [showChangeLog, setShowChangeLog] = useState(false);
 
   useEffect(() => {
-    initDefaultUsers().then(() => {
-      syncFromServer()
-        .then(() => setSyncError(false))
-        .catch(() => setSyncError(true))
-        .finally(() => {
-          migrateCategories();
-          seedCostDatabaseIfEmpty();
-          setStore(loadStore());
-          setSyncing(false);
-        });
-    });
+    // 重要: 起動時の順序
+    // 1. サーバーから最新ユーザー一覧を取得（ローカルが空でも上書きしない）
+    // 2. ローカルがまだ空ならデフォルトユーザーを作成（=新規環境のみ）
+    // 3. 既存環境にkoboがいなければ補完（マイグレーション）
+    syncFromServer()
+      .then(() => setSyncError(false))
+      .catch(() => setSyncError(true))
+      .finally(async () => {
+        await initDefaultUsers();
+        await ensureKoboUser();
+        migrateCategories();
+        seedCostDatabaseIfEmpty();
+        setStore(loadStore());
+        setSyncing(false);
+      });
   }, []);
 
   const availableYears = Array.from(
