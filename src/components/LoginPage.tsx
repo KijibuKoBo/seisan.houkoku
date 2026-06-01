@@ -62,7 +62,6 @@ export default function LoginPage({ onLogin }: Props) {
             {loading ? 'ログイン中...' : 'ログイン'}
           </button>
         </form>
-        <div className="login-note">初期ID: admin / 初期PW: admin123</div>
       </div>
     </div>
   );
