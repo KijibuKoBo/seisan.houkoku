@@ -466,6 +466,10 @@ function LotDetail({lot,lots,products,issues,onBack,onAddIssue,onEditLot,onEditI
 function IssueCard({issue,products,showProduct=true,onEdit}){
   const border={調査中:'border-l-4 border-yellow-400',解決済:'border-l-4 border-green-400',未対応:'border-l-4 border-red-400'};
   const pr=products?.find(p=>p.id===issue.productId);
+  const [images,setImages]=useState([]);
+  useEffect(()=>{
+    if(issue?.id) fetch(`api/images.php?issue_id=${issue.id}`).then(r=>r.json()).then(d=>setImages(Array.isArray(d)?d:[])).catch(()=>{});
+  },[issue?.id]);
   return(
     <div className={`bg-white rounded-xl shadow-sm p-4 ${border[issue.status]||''}`}>
       <div className="flex justify-between items-start gap-3">
@@ -476,6 +480,13 @@ function IssueCard({issue,products,showProduct=true,onEdit}){
           {issue.cause&&<div className="text-xs text-gray-600 mt-1">原因: {issue.cause}</div>}
           {issue.improvement&&<div className="text-xs text-teal-700 font-medium mt-1">改善: {issue.improvement}</div>}
           <div className="text-xs text-gray-400 mt-1">{issue.assignee} · {issue.date}</div>
+          {images.length>0&&(
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {images.map(img=>(
+                <img key={img.id} src={img.url} className="w-16 h-16 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90" onClick={()=>window.open(img.url,'_blank')}/>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
           <div className="flex gap-1 flex-wrap justify-end">
@@ -1029,7 +1040,37 @@ function IssueModal({issue,lotId,lots,products,parts,assignees,onSave,onDelete,o
   });
   const [saving,setSaving]=useState(false);
   const [deleting,setDeleting]=useState(false);
+  const [images,setImages]=useState([]);
+  const [uploading,setUploading]=useState(false);
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+
+  // 既存画像を読み込む（編集時）
+  useEffect(()=>{
+    if(issue?.id){
+      fetch(`api/images.php?issue_id=${issue.id}`).then(r=>r.json()).then(d=>setImages(Array.isArray(d)?d:[])).catch(()=>{});
+    }
+  },[issue?.id]);
+
+  async function uploadImage(file){
+    setUploading(true);
+    try{
+      const fd=new FormData();
+      fd.append('image',file);
+      fd.append('issue_id',issue?.id||'_pending_');
+      const r=await fetch('api/upload.php',{method:'POST',body:fd});
+      const d=await r.json();
+      if(d.ok) setImages(p=>[...p,d]);
+      else alert(d.error||'アップロードに失敗しました');
+    }catch{ alert('アップロードに失敗しました'); }
+    setUploading(false);
+  }
+
+  async function deleteImage(img){
+    if(!window.confirm('この写真を削除しますか？'))return;
+    await fetch(`api/images.php?id=${img.id}`,{method:'DELETE'});
+    setImages(p=>p.filter(i=>i.id!==img.id));
+  }
+
   return(
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
       <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -1061,6 +1102,28 @@ function IssueModal({issue,lotId,lots,products,parts,assignees,onSave,onDelete,o
             <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" value={form.assignee} onChange={e=>set('assignee',e.target.value)}>
               <option value="">担当者を選択...</option>{assignees.map(a=><option key={a.id}>{a.name}</option>)}
             </select></div>
+
+          {/* 写真添付（編集時のみ） */}
+          {issue&&(
+            <div>
+              <label className="text-xs text-gray-600 block mb-2">写真</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {images.map(img=>(
+                  <div key={img.id} className="relative group">
+                    <img src={img.url} className="w-20 h-20 object-cover rounded-lg border border-gray-200" onClick={()=>window.open(img.url,'_blank')}/>
+                    <button onClick={()=>deleteImage(img)} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                  </div>
+                ))}
+                <label className={`w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-colors ${uploading?'opacity-50 pointer-events-none':''}`}>
+                  <span className="text-2xl text-gray-400">📷</span>
+                  <span className="text-xs text-gray-400 mt-1">{uploading?'送信中...':'写真追加'}</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={e=>{if(e.target.files[0])uploadImage(e.target.files[0]);e.target.value='';}}/>
+                </label>
+              </div>
+              <p className="text-xs text-gray-400">写真をタップすると拡大表示。✕で削除。JPG/PNG/HEIC対応 最大10MB</p>
+            </div>
+          )}
+          {!issue&&<p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">💡 写真は保存後に追加できます</p>}
         </div>
         <div className="flex gap-3 mt-5">
           {issue&&onDelete&&(
