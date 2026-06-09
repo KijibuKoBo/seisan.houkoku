@@ -48,11 +48,18 @@ const ISSUE_STATUSES= ['調査中','解決済','未対応'];
 const ADMIN_ROLE    = '管理者';
 
 // ===== API helper =====
+async function apiFetch(url, opts={}){
+  const r = await fetch(url, opts);
+  if(r.status===401) throw {code:'UNAUTHORIZED'};
+  const json = await r.json();
+  if(!r.ok) throw new Error(json?.error || `サーバーエラー(${r.status})`);
+  return json;
+}
 const api = {
-  get:    async (url)       => { const r=await fetch(url);           if(r.status===401)throw{code:'UNAUTHORIZED'}; return r.json(); },
-  post:   async (url,data)  => { const r=await fetch(url,{method:'POST', headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}); if(r.status===401)throw{code:'UNAUTHORIZED'}; return r.json(); },
-  put:    async (url,data)  => { const r=await fetch(url,{method:'PUT',  headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}); if(r.status===401)throw{code:'UNAUTHORIZED'}; return r.json(); },
-  delete: async (url)       => { const r=await fetch(url,{method:'DELETE'}); if(r.status===401)throw{code:'UNAUTHORIZED'}; return r.json(); },
+  get:    (url)       => apiFetch(url),
+  post:   (url,data)  => apiFetch(url,{method:'POST',  headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}),
+  put:    (url,data)  => apiFetch(url,{method:'PUT',   headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}),
+  delete: (url)       => apiFetch(url,{method:'DELETE'}),
 };
 
 function fmtDate(d){ if(!d)return'—'; const dt=new Date(d); return`${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}`; }
@@ -578,7 +585,7 @@ function ProductModal({product,onSave,onClose}){
         </div>
         <div className="flex gap-3 mt-5">
           <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm">キャンセル</button>
-          <button onClick={async()=>{if(!form.name||saving)return;setSaving(true);await onSave(form);setSaving(false);}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
+          <button onClick={async()=>{if(!form.name||saving)return;setSaving(true);try{await onSave(form);}catch(e){alert('保存に失敗しました。もう一度お試しください。');}finally{setSaving(false);}}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
         </div>
       </div>
     </div>
@@ -978,7 +985,7 @@ function LotModal({lot,products,assignees,onSave,onDelete,onClose}){
             <button onClick={async()=>{if(deleting||!window.confirm('このロットを削除しますか？\n関連する改善記録も削除されます。'))return;setDeleting(true);onDelete(lot.id);}} disabled={deleting} className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm disabled:opacity-50 hover:bg-red-600">{deleting?'削除中...':'🗑 削除'}</button>
           )}
           <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm">キャンセル</button>
-          <button onClick={async()=>{if(saving)return;setSaving(true);await onSave({...form,lotNumber:parseInt(form.lotNumber)||null});setSaving(false);}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
+          <button onClick={async()=>{if(saving)return;setSaving(true);try{await onSave({...form,lotNumber:parseInt(form.lotNumber)||null});}catch(e){alert('保存に失敗しました。もう一度お試しください。');}finally{setSaving(false);}}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
         </div>
       </div>
     </div>
@@ -1037,7 +1044,7 @@ function IssueModal({issue,lotId,lots,products,parts,assignees,onSave,onDelete,o
             <button onClick={async()=>{if(deleting||!window.confirm('この記録を削除しますか？'))return;setDeleting(true);await onDelete(issue.id);setDeleting(false);}} disabled={deleting} className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm disabled:opacity-50 hover:bg-red-600">{deleting?'削除中...':'🗑 削除'}</button>
           )}
           <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm">キャンセル</button>
-          <button onClick={async()=>{if(saving)return;setSaving(true);await onSave(form);setSaving(false);}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
+          <button onClick={async()=>{if(saving)return;setSaving(true);try{await onSave(form);}catch(e){alert('保存に失敗しました。もう一度お試しください。');}finally{setSaving(false);}}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
         </div>
       </div>
     </div>
