@@ -12,27 +12,25 @@
   body { font-family: 'Hiragino Sans', 'Meiryo', 'Yu Gothic', sans-serif; }
 
   /* ===== ガントチャート A3横印刷 ===== */
+  body.print-gantt * { visibility: hidden; }
+  body.print-gantt #gantt-print, body.print-gantt #gantt-print * { visibility: visible; }
+  body.print-gantt #gantt-print { position: absolute; left: 0; top: 0; width: 100%; padding: 0 !important; }
+  body.print-gantt #gantt-print * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body.print-gantt #gantt-print .gantt-scroll { min-width: 0 !important; }
+  body.print-gantt #gantt-print .shadow-sm { box-shadow: none !important; }
+
+  /* ===== ロット詳細 A4縦印刷 ===== */
+  body.print-lot * { visibility: hidden; }
+  body.print-lot #lot-print, body.print-lot #lot-print * { visibility: visible; }
+  body.print-lot #lot-print { position: absolute; left: 0; top: 0; width: 100%; padding: 16px !important; }
+  body.print-lot #lot-print * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
   @media print {
-    @page { size: A3 landscape; margin: 8mm; }
-    body { background: #fff !important; }
-    /* 印刷対象以外を隠す */
-    body * { visibility: hidden; }
-    #gantt-print, #gantt-print * { visibility: visible; }
-    #gantt-print {
-      position: absolute; left: 0; top: 0; width: 100%;
-      padding: 0 !important;
-    }
-    /* 操作系は印刷しない */
     .no-print { display: none !important; }
-    /* 色を確実に印刷（背景色・色付きバー） */
-    #gantt-print * {
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    /* 横スクロール用の最小幅を解除して用紙幅に収める */
-    #gantt-print .gantt-scroll { min-width: 0 !important; }
-    /* 影や角丸は印刷で不要 */
-    #gantt-print .shadow-sm { box-shadow: none !important; }
+    body.print-gantt { background: #fff !important; }
+    body.print-gantt @page { size: A3 landscape; margin: 8mm; }
+    body.print-lot   { background: #fff !important; }
+    body.print-lot   @page { size: A4 portrait; margin: 12mm; }
   }
 </style>
 </head>
@@ -377,10 +375,10 @@ function LotDetail({lot,lots,products,issues,onBack,onAddIssue,onEditLot,onEditI
   const pastLots=lots.filter(l=>l.productId===lot.productId&&l.id!==lot.id).sort((a,b)=>b.lotNumber-a.lotNumber);
   const pastIssues=issues.filter(i=>pastLots.some(l=>l.id===i.lotId)).sort((a,b)=>new Date(b.date)-new Date(a.date));
   return(
-    <div className="px-3 py-4 md:p-6">
+    <div id="lot-print" className="px-3 py-4 md:p-6">
       <div className="flex flex-wrap justify-between items-start gap-3 mb-5">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="text-gray-400 hover:text-gray-700 text-lg">←</button>
+          <button onClick={onBack} className="no-print text-gray-400 hover:text-gray-700 text-lg">←</button>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-2xl font-bold">{lot.lotNumber}</span><Badge type={lot.status}/>
@@ -389,9 +387,9 @@ function LotDetail({lot,lots,products,issues,onBack,onAddIssue,onEditLot,onEditI
             <div className="text-gray-500 text-sm">{pr?.name}</div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <button className="hidden md:block px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">🖨 印刷</button>
-          <button className="hidden md:block px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">↓ PDF保存</button>
+        <div className="flex gap-2 no-print">
+          <button onClick={()=>{document.body.classList.add('print-lot');window.print();document.body.classList.remove('print-lot');}} className="hidden md:flex items-center gap-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">🖨 印刷</button>
+          <button onClick={()=>{document.body.classList.add('print-lot');window.print();document.body.classList.remove('print-lot');}} className="hidden md:flex items-center gap-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">↓ PDF保存</button>
           <button onClick={onEditLot} className="px-3 py-1.5 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-700">✎ 編集</button>
         </div>
       </div>
@@ -667,7 +665,7 @@ function Schedule({lots,products,assignees}){
             <button onClick={()=>{const d=new Date(startDate);d.setMonth(d.getMonth()-1);setStartDate(d);}} className="px-2 py-1 hover:bg-gray-700 rounded text-sm">←</button>
             <button onClick={()=>setStartDate(new Date(now.getFullYear(),now.getMonth(),1))} className="px-3 py-1 text-sm hover:bg-gray-700 rounded">今月</button>
             <button onClick={()=>{const d=new Date(startDate);d.setMonth(d.getMonth()+1);setStartDate(d);}} className="px-2 py-1 hover:bg-gray-700 rounded text-sm">→</button>
-            <button onClick={()=>window.print()} className="no-print px-2 py-1 md:px-3 md:py-1.5 bg-orange-500 rounded text-xs md:text-sm font-medium hover:bg-orange-400">🖨 A3印刷</button>
+            <button onClick={()=>{document.body.classList.add('print-gantt');window.print();document.body.classList.remove('print-gantt');}} className="no-print px-2 py-1 md:px-3 md:py-1.5 bg-orange-500 rounded text-xs md:text-sm font-medium hover:bg-orange-400">🖨 A3印刷 / PDF</button>
           </div>
         </div>
       </div>
