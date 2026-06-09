@@ -19,6 +19,13 @@
   body.print-gantt #gantt-print .gantt-scroll { min-width: 0 !important; }
   body.print-gantt #gantt-print .shadow-sm { box-shadow: none !important; }
 
+  /* ===== 改善記録 A4縦印刷 ===== */
+  body.print-issues * { visibility: hidden; }
+  body.print-issues #issues-print, body.print-issues #issues-print * { visibility: visible; }
+  body.print-issues #issues-print { position: absolute; left: 0; top: 0; width: 100%; padding: 16px !important; }
+  body.print-issues #issues-print * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body.print-issues .print-header { display: block !important; }
+
   /* ===== ロット詳細 A4縦印刷 ===== */
   body.print-lot * { visibility: hidden; }
   body.print-lot #lot-print, body.print-lot #lot-print * { visibility: visible; }
@@ -499,10 +506,28 @@ function IssueList({issues,products,defaultFilter,onEditIssue}){
     if(search){const t=`${i.description} ${i.cause} ${i.improvement} ${i.partId}`.toLowerCase();if(!t.includes(search.toLowerCase()))return false;}
     return true;
   }).sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  function doPrint(){
+    document.body.classList.add('print-issues');
+    window.print();
+    document.body.classList.remove('print-issues');
+  }
+
+  const printTitle = prodF==='すべて' ? '改善・注意記録 — 全製品' : `改善・注意記録 — ${prodF}`;
+
   return(
-    <div className="px-3 py-4 md:p-6">
-      <h1 className="text-2xl font-bold mb-5">改善・注意記録</h1>
-      <div className="flex flex-wrap gap-2 mb-4">
+    <div id="issues-print" className="px-3 py-4 md:p-6">
+      {/* 印刷時のみ表示するヘッダー */}
+      <div className="hidden print-header mb-4 pb-3 border-b-2 border-gray-800">
+        <div className="text-xs text-gray-500">松永工房 仏壇生産管理</div>
+        <div className="text-xl font-bold">{printTitle}</div>
+        <div className="text-xs text-gray-500 mt-1">出力日: {new Date().toLocaleDateString('ja-JP')}&nbsp;/&nbsp;{filtered.length}件</div>
+      </div>
+      <div className="flex justify-between items-center mb-4 no-print">
+        <h1 className="text-2xl font-bold">改善・注意記録</h1>
+        <button onClick={doPrint} className="hidden md:flex items-center gap-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">🖨 印刷 / PDF</button>
+      </div>
+      <div className="flex flex-wrap gap-2 mb-4 no-print">
         {[['all','すべて'],['未解決','未解決'],['重要変更','重要変更'],['再発防止済','再発防止済']].map(([val,label])=>(
           <button key={val} onClick={()=>setTab(val)}
             className={`px-4 py-1.5 rounded-lg text-sm ${tab===val?'bg-gray-900 text-white':'bg-white border border-gray-200 hover:bg-gray-50'}`}>
@@ -510,7 +535,7 @@ function IssueList({issues,products,defaultFilter,onEditIssue}){
           </button>
         ))}
       </div>
-      <div className="flex flex-col md:flex-row gap-3 mb-4">
+      <div className="flex flex-col md:flex-row gap-3 mb-4 no-print">
         <input className="flex-1 border border-gray-200 rounded-lg px-4 py-2 text-sm" placeholder="内容・部品・原因・改善方法で検索..." value={search} onChange={e=>setSearch(e.target.value)}/>
         <select value={prodF} onChange={e=>setProdF(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
           <option>すべて</option>{products.map(p=><option key={p.id}>{p.name}</option>)}
