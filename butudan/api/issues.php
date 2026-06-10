@@ -55,7 +55,18 @@ try {
         echo json_encode(['ok'=>true]);
 
     } elseif ($m === 'DELETE') {
-        $db->prepare("DELETE FROM issues WHERE id=?")->execute([$_GET['id']??'']);
+        $id = $_GET['id'] ?? '';
+        // 添付画像も削除（imagesテーブル未作成の環境では何もしない）
+        try {
+            $stmt = $db->prepare("SELECT filename FROM images WHERE issue_id=?");
+            $stmt->execute([$id]);
+            foreach ($stmt->fetchAll() as $img) {
+                $path = __DIR__ . '/../uploads/' . $img['filename'];
+                if (file_exists($path)) unlink($path);
+            }
+            $db->prepare("DELETE FROM images WHERE issue_id=?")->execute([$id]);
+        } catch (Exception $e) {}
+        $db->prepare("DELETE FROM issues WHERE id=?")->execute([$id]);
         echo json_encode(['ok'=>true]);
     }
 } catch (Exception $e) {

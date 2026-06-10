@@ -84,7 +84,7 @@ if (!move_uploaded_file($file['tmp_name'], $destPath)) {
 try {
     $db->prepare("INSERT INTO images (id, issue_id, filename) VALUES (?,?,?)")
        ->execute([$id, $issueId, $filename]);
-    echo json_encode(['ok' => true, 'id' => $id, 'filename' => $filename, 'url' => '../uploads/' . $filename]);
+    echo json_encode(['ok' => true, 'id' => $id, 'filename' => $filename, 'url' => 'uploads/' . $filename]);
 } catch (Exception $e) {
     unlink($destPath);
     http_response_code(500);

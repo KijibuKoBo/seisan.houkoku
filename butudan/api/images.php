@@ -18,7 +18,7 @@ try {
             'id'       => $r['id'],
             'issueId'  => $r['issue_id'],
             'filename' => $r['filename'],
-            'url'      => '../uploads/' . $r['filename'],
+            'url'      => 'uploads/' . $r['filename'],
         ], $rows));
 
     } elseif ($m === 'DELETE') {

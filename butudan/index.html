@@ -34,10 +34,7 @@
 
   @media print {
     .no-print { display: none !important; }
-    body.print-gantt { background: #fff !important; }
-    body.print-gantt @page { size: A3 landscape; margin: 8mm; }
-    body.print-lot   { background: #fff !important; }
-    body.print-lot   @page { size: A4 portrait; margin: 12mm; }
+    body.print-gantt, body.print-lot, body.print-issues { background: #fff !important; }
   }
 </style>
 </head>
@@ -66,6 +63,17 @@ const api = {
   put:    (url,data)  => apiFetch(url,{method:'PUT',   headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}),
   delete: (url)       => apiFetch(url,{method:'DELETE'}),
 };
+
+// 印刷ヘルパー: bodyクラス切替 + @page(用紙サイズ・向き)を動的注入
+function printSection(bodyClass, pageRule){
+  const style=document.createElement('style');
+  style.textContent=`@page { ${pageRule} }`;
+  document.head.appendChild(style);
+  document.body.classList.add(bodyClass);
+  window.print();
+  document.body.classList.remove(bodyClass);
+  document.head.removeChild(style);
+}
 
 function fmtDate(d){ if(!d)return'—'; const dt=new Date(d); return`${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}`; }
 function isOverdue(lot){ return lot.status==='制作中'&&lot.shipDate&&lot.shipDate<TODAY; }
@@ -395,8 +403,7 @@ function LotDetail({lot,lots,products,issues,onBack,onAddIssue,onEditLot,onEditI
           </div>
         </div>
         <div className="flex gap-2 no-print">
-          <button onClick={()=>{document.body.classList.add('print-lot');window.print();document.body.classList.remove('print-lot');}} className="hidden md:flex items-center gap-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">🖨 印刷</button>
-          <button onClick={()=>{document.body.classList.add('print-lot');window.print();document.body.classList.remove('print-lot');}} className="hidden md:flex items-center gap-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">↓ PDF保存</button>
+          <button onClick={()=>printSection('print-lot','size: A4 portrait; margin: 12mm;')} className="hidden md:flex items-center gap-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">🖨 印刷 / PDF</button>
           <button onClick={onEditLot} className="px-3 py-1.5 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-700">✎ 編集</button>
         </div>
       </div>
@@ -519,9 +526,7 @@ function IssueList({issues,products,defaultFilter,onEditIssue}){
   }).sort((a,b)=>new Date(b.date)-new Date(a.date));
 
   function doPrint(){
-    document.body.classList.add('print-issues');
-    window.print();
-    document.body.classList.remove('print-issues');
+    printSection('print-issues','size: A4 portrait; margin: 12mm;');
   }
 
   const printTitle = prodF==='すべて' ? '改善・注意記録 — 全製品' : `改善・注意記録 — ${prodF}`;
@@ -701,7 +706,7 @@ function Schedule({lots,products,assignees}){
             <button onClick={()=>{const d=new Date(startDate);d.setMonth(d.getMonth()-1);setStartDate(d);}} className="px-2 py-1 hover:bg-gray-700 rounded text-sm">←</button>
             <button onClick={()=>setStartDate(new Date(now.getFullYear(),now.getMonth(),1))} className="px-3 py-1 text-sm hover:bg-gray-700 rounded">今月</button>
             <button onClick={()=>{const d=new Date(startDate);d.setMonth(d.getMonth()+1);setStartDate(d);}} className="px-2 py-1 hover:bg-gray-700 rounded text-sm">→</button>
-            <button onClick={()=>{document.body.classList.add('print-gantt');window.print();document.body.classList.remove('print-gantt');}} className="no-print px-2 py-1 md:px-3 md:py-1.5 bg-orange-500 rounded text-xs md:text-sm font-medium hover:bg-orange-400">🖨 A3印刷 / PDF</button>
+            <button onClick={()=>printSection('print-gantt','size: A3 landscape; margin: 8mm;')} className="no-print px-2 py-1 md:px-3 md:py-1.5 bg-orange-500 rounded text-xs md:text-sm font-medium hover:bg-orange-400">🖨 A3印刷 / PDF</button>
           </div>
         </div>
       </div>
@@ -1016,7 +1021,7 @@ function LotModal({lot,products,assignees,onSave,onDelete,onClose}){
         </div>
         <div className="flex gap-3 mt-5">
           {lot&&onDelete&&(
-            <button onClick={async()=>{if(deleting||!window.confirm('このロットを削除しますか？\n関連する改善記録も削除されます。'))return;setDeleting(true);onDelete(lot.id);}} disabled={deleting} className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm disabled:opacity-50 hover:bg-red-600">{deleting?'削除中...':'🗑 削除'}</button>
+            <button onClick={async()=>{if(deleting||!window.confirm('このロットを削除しますか？\n関連する改善記録も削除されます。'))return;setDeleting(true);try{await onDelete(lot.id);}catch(e){alert('削除に失敗しました。もう一度お試しください。');setDeleting(false);}}} disabled={deleting} className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm disabled:opacity-50 hover:bg-red-600">{deleting?'削除中...':'🗑 削除'}</button>
           )}
           <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm">キャンセル</button>
           <button onClick={async()=>{if(saving)return;setSaving(true);try{await onSave({...form,lotNumber:parseInt(form.lotNumber)||null});}catch(e){alert('保存に失敗しました。もう一度お試しください。');}finally{setSaving(false);}}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
@@ -1052,11 +1057,12 @@ function IssueModal({issue,lotId,lots,products,parts,assignees,onSave,onDelete,o
   },[issue?.id]);
 
   async function uploadImage(file){
+    if(!issue?.id)return;
     setUploading(true);
     try{
       const fd=new FormData();
       fd.append('image',file);
-      fd.append('issue_id',issue?.id||'_pending_');
+      fd.append('issue_id',issue.id);
       const r=await fetch('api/upload.php',{method:'POST',body:fd});
       const d=await r.json();
       if(d.ok) setImages(p=>[...p,d]);
@@ -1127,7 +1133,7 @@ function IssueModal({issue,lotId,lots,products,parts,assignees,onSave,onDelete,o
         </div>
         <div className="flex gap-3 mt-5">
           {issue&&onDelete&&(
-            <button onClick={async()=>{if(deleting||!window.confirm('この記録を削除しますか？'))return;setDeleting(true);await onDelete(issue.id);setDeleting(false);}} disabled={deleting} className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm disabled:opacity-50 hover:bg-red-600">{deleting?'削除中...':'🗑 削除'}</button>
+            <button onClick={async()=>{if(deleting||!window.confirm('この記録を削除しますか？'))return;setDeleting(true);try{await onDelete(issue.id);}catch(e){alert('削除に失敗しました。もう一度お試しください。');setDeleting(false);}}} disabled={deleting} className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm disabled:opacity-50 hover:bg-red-600">{deleting?'削除中...':'🗑 削除'}</button>
           )}
           <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm">キャンセル</button>
           <button onClick={async()=>{if(saving)return;setSaving(true);try{await onSave(form);}catch(e){alert('保存に失敗しました。もう一度お試しください。');}finally{setSaving(false);}}} disabled={saving} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">{saving?'保存中...':'保存'}</button>
