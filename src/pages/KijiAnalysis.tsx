@@ -219,7 +219,7 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
   const [productEdits, setProductEdits] = useState<Record<string, { category: string; name: string }>>({});
   const [productCatFilter, setProductCatFilter] = useState<string | null>(null);
 
-  const handleProductEditSave = () => {
+  const handleProductEditSave = async () => {
     const changedCount = Object.entries(productEdits).filter(([key, edit]) => {
       const product = products.find(p => p.key === key);
       return product && (product.category !== edit.category || product.name !== edit.name);
@@ -232,6 +232,11 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
       if (product.category !== edit.category || product.name !== edit.name) {
         renameKijiItemsByName(product.category, product.name, edit.category, edit.name);
       }
+    }
+    try {
+      await pushKijiToServer();
+    } catch (e) {
+      alert(`サーバー保存に失敗しました。他の端末には反映されません。\n\n${e instanceof Error ? e.message : ''}`);
     }
     setProductEdits({});
     setProductEditMode(false);
@@ -982,9 +987,14 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
     }
     saveKijiItems(selYear, selMonth, items);
     onSaveMonthKiji(selYear, selMonth, totalCount, totalAmount);
-    await pushKijiToServer();
-    setOrigItems(items);
-    setSaved('yes');
+    try {
+      await pushKijiToServer();
+      setOrigItems(items);
+      setSaved('yes');
+    } catch (e) {
+      setSaved('no');
+      alert(`サーバー保存に失敗しました。他の端末には反映されません。\n\n${e instanceof Error ? e.message : ''}`);
+    }
     onRefresh();
   };
 

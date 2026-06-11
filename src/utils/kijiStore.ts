@@ -1,5 +1,5 @@
 import { KijiItem } from '../types';
-import { apiSet } from './api';
+import { apiSet, apiSetStrict } from './api';
 
 const KEY = 'matsunaga_kiji_items';
 
@@ -26,10 +26,10 @@ export function saveKijiItems(year: number, month: number, items: KijiItem[]): v
   save(data);
 }
 
-// ZIPインポート完了後など、全データを確実にサーバーへ送信する
+// ZIPインポート完了後など、全データを確実にサーバーへ送信する（失敗時は例外）
 export async function pushKijiToServer(): Promise<void> {
   const json = localStorage.getItem(KEY);
-  if (json) await apiSet(KEY, json);
+  if (json) await apiSetStrict(KEY, json);
 }
 
 function normalizeCategory(item: KijiItem): KijiItem {
@@ -44,14 +44,6 @@ export function loadKijiItems(year: number, month: number): KijiItem[] {
 export function loadAllKijiItems(): KijiItem[] {
   const data = load();
   return Object.values(data).flat().map(normalizeCategory);
-}
-
-export function loadKijiItemsByYears(years: number[]): KijiItem[] {
-  const data = load();
-  return Object.entries(data)
-    .filter(([k]) => years.includes(parseInt(k.split('_')[0])))
-    .flatMap(([, items]) => items)
-    .map(normalizeCategory);
 }
 
 export function getAvailableKijiYears(): number[] {

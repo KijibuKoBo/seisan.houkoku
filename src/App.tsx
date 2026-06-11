@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { YearStore, MonthData, AuthSession, KijiItem } from './types';
-import { loadStore, saveStore, setMonthData } from './utils/store';
+import { loadStore, saveStore, pushStoreToServer, setMonthData } from './utils/store';
 import { initDefaultUsers, ensureKoboUser, getSession, logout } from './utils/auth';
 import { saveKijiItems, migrateCategories, pushKijiToServer } from './utils/kijiStore';
 import { syncFromServer, logChange, getChangeLogs } from './utils/api';
@@ -62,6 +62,16 @@ export default function App() {
 
   const handleLogout = () => { logout(); setSession(null); };
 
+  // saveStore（ローカル保存）後にサーバー反映を確認し、失敗したら警告する
+  const confirmServerSave = () => {
+    pushStoreToServer()
+      .then(() => setSyncError(false))
+      .catch(e => {
+        setSyncError(true);
+        alert(`月次データのサーバー保存に失敗しました。\n他の端末には反映されません。\n\n${e instanceof Error ? e.message : ''}`);
+      });
+  };
+
   const handleKijiMonthSave = useCallback((year: number, month: number, count: number, amount: number) => {
     const existing: MonthData = store[year]?.[month] ?? {
       month,
@@ -74,6 +84,7 @@ export default function App() {
     const next = setMonthData(store, year, month, updated);
     setStore(next);
     saveStore(next);
+    confirmServerSave();
   }, [store]);
 
   const handleSave = useCallback((data: MonthData, kijiItems: KijiItem[]) => {
@@ -82,9 +93,10 @@ export default function App() {
     const next = setMonthData(store, selectedYear, editingMonth, data);
     setStore(next);
     saveStore(next);
+    confirmServerSave();
     if (kijiItems.length > 0) {
       saveKijiItems(selectedYear, editingMonth, kijiItems);
-      pushKijiToServer();
+      pushKijiToServer().catch(() => setSyncError(true));
     }
 
     const labels: Record<string, string> = {

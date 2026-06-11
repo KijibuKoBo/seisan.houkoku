@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { ProductDef, CATEGORIES, CATEGORY_FULL } from '../utils/productList';
-import { loadCostDatabase, saveCostDatabase } from '../utils/costStore';
+import { loadCostDatabase, saveCostDatabase, pushCostDbToServer } from '../utils/costStore';
 import './CostDatabase.css';
 
 const CAT_ORDER = ['Co', 'MP', '仏壇', 'PC', 'リリー', '特注', 'その他'] as const;
@@ -20,8 +20,14 @@ export default function CostDatabase() {
   const commit = useCallback((next: ProductDef[]) => {
     setProducts(next);
     saveCostDatabase(next);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1800);
+    pushCostDbToServer()
+      .then(() => {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 1800);
+      })
+      .catch(e => {
+        alert(`サーバー保存に失敗しました。他の端末には反映されません。\n\n${e instanceof Error ? e.message : ''}`);
+      });
   }, []);
 
   const startEdit = (globalIdx: number, p: ProductDef) => {

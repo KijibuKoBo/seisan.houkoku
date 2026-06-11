@@ -1,5 +1,5 @@
 import { YearStore, MonthData } from '../types';
-import { apiSet } from './api';
+import { apiSet, apiSetStrict } from './api';
 
 const KEY = 'matsunaga_seisan';
 
@@ -18,8 +18,10 @@ export function saveStore(store: YearStore): void {
   apiSet(KEY, json);
 }
 
-export function getMonthData(store: YearStore, year: number, month: number): MonthData | null {
-  return store[year]?.[month] ?? null;
+// 保存後にサーバー反映を確実にする（失敗時は例外）
+export async function pushStoreToServer(): Promise<void> {
+  const json = localStorage.getItem(KEY);
+  if (json) await apiSetStrict(KEY, json);
 }
 
 export function setMonthData(store: YearStore, year: number, month: number, data: MonthData): YearStore {
@@ -27,8 +29,4 @@ export function setMonthData(store: YearStore, year: number, month: number, data
   if (!next[year]) next[year] = {};
   next[year] = { ...next[year], [month]: data };
   return next;
-}
-
-export function getAvailableYears(store: YearStore): number[] {
-  return Object.keys(store).map(Number).sort((a, b) => b - a);
 }
