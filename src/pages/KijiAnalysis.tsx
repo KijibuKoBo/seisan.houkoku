@@ -1213,6 +1213,8 @@ function ManageTab({ availableYears, store, onSaveMonthKiji, canEdit, onRefresh 
         <KijiReport
           defaultYear={selYear}
           defaultMonth={selMonth}
+          canEdit={canEdit}
+          onSaved={(y, m, c, a) => { onSaveMonthKiji(y, m, c, a); onRefresh(); }}
           onClose={() => setShowReport(false)}
         />
       )}

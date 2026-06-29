@@ -247,6 +247,8 @@ export default function App() {
         <KijiReport
           defaultYear={selectedYear}
           defaultMonth={new Date().getMonth() + 1}
+          canEdit={canEdit}
+          onSaved={handleKijiMonthSave}
           onClose={() => setShowKijiReport(false)}
         />
       )}

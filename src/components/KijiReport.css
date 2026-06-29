@@ -349,6 +349,75 @@
   line-height: 2;
 }
 
+/* ── Edit controls (screen only) ── */
+.kr-save-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 14px;
+}
+.kr-save-bar-msg { font-size: 13px; color: #8d6e00; font-weight: 600; }
+.kr-save-bar-btn {
+  padding: 8px 20px;
+  background: #2e7d32;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: inherit;
+}
+.kr-save-bar-btn:hover { background: #256528; }
+.kr-save-bar-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.kr-th-edit { width: 130px; }
+
+.kr-td-edit {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.kr-excl-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: #555;
+  cursor: pointer;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.kr-excl-check input { width: 15px; height: 15px; cursor: pointer; }
+
+.kr-move-btns {
+  display: inline-flex;
+  gap: 3px;
+  vertical-align: middle;
+}
+.kr-move-btn {
+  width: 26px;
+  height: 24px;
+  border: 1px solid #c5d0dd;
+  background: #f5f8fc;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #1a3a5c;
+  line-height: 1;
+  padding: 0;
+}
+.kr-move-btn:hover:not(:disabled) { background: #e3ecf6; }
+.kr-move-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* 除外行でも編集列は通常の濃さで表示 */
+.kr-excluded-row .kr-td-edit { opacity: 1; }
+
 /* ── Print ── */
 @page { size: A4; margin: 9mm; }
 

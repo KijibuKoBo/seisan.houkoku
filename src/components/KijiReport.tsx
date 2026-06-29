@@ -1,12 +1,14 @@
-import { useRef, useState, useMemo } from 'react';
+import { useRef, useState, useMemo, useEffect } from 'react';
 import { KijiItem } from '../types';
 import { CATEGORY_FULL } from '../utils/productList';
-import { loadKijiItems, getAvailableKijiYears } from '../utils/kijiStore';
+import { loadKijiItems, getAvailableKijiYears, saveKijiItems, pushKijiToServer } from '../utils/kijiStore';
 import './KijiReport.css';
 
 interface Props {
   defaultYear?: number;
   defaultMonth?: number;
+  canEdit?: boolean;
+  onSaved?: (year: number, month: number, count: number, amount: number) => void;
   onClose: () => void;
 }
 
@@ -130,7 +132,7 @@ function IconClipboard() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function KijiReport({ defaultYear, defaultMonth, onClose }: Props) {
+export default function KijiReport({ defaultYear, defaultMonth, canEdit = false, onSaved, onClose }: Props) {
   const currentReiwa = new Date().getFullYear() - 2018;
   const availableYears = useMemo(() => {
     const ky = getAvailableKijiYears();
@@ -138,11 +140,54 @@ export default function KijiReport({ defaultYear, defaultMonth, onClose }: Props
   }, []);
   const [year,  setYear]  = useState(defaultYear  ?? availableYears[0] ?? currentReiwa);
   const [month, setMonth] = useState(defaultMonth ?? new Date().getMonth() + 1);
-  const items = useMemo(() => loadKijiItems(year, month), [year, month]);
+  const [items, setItems] = useState<KijiItem[]>(() => loadKijiItems(year, month));
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { setItems(loadKijiItems(year, month)); setDirty(false); }, [year, month]);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [lineLoading, setLineLoading] = useState(false);
+
+  // 「本数に含めない」のトグル
+  const toggleExcluded = (gIdx: number) => {
+    setItems(prev => prev.map((it, i) => i === gIdx ? { ...it, excluded: !it.excluded } : it));
+    setDirty(true);
+  };
+
+  // 同じカテゴリー内で上下に並べ替え
+  const moveItem = (gIdx: number, dir: -1 | 1) => {
+    setItems(prev => {
+      const cat = prev[gIdx].category || 'その他';
+      const sameCat = prev.map((it, i) => ({ it, i }))
+        .filter(x => (x.it.category || 'その他') === cat).map(x => x.i);
+      const pos = sameCat.indexOf(gIdx);
+      const tPos = pos + dir;
+      if (tPos < 0 || tPos >= sameCat.length) return prev;
+      const tIdx = sameCat[tPos];
+      const next = [...prev];
+      [next[gIdx], next[tIdx]] = [next[tIdx], next[gIdx]];
+      return next;
+    });
+    setDirty(true);
+  };
+
+  const handleSaveEdits = async () => {
+    setSaving(true);
+    saveKijiItems(year, month, items);
+    const act = items.filter(i => !i.excluded);
+    const cnt = act.reduce((s, i) => s + i.count, 0);
+    const amt = items.reduce((s, i) => s + i.amount, 0);
+    onSaved?.(year, month, cnt, amt);
+    try {
+      await pushKijiToServer();
+      setDirty(false);
+    } catch (e) {
+      alert(`サーバー保存に失敗しました。他の端末には反映されません。\n\n${e instanceof Error ? e.message : ''}`);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const fileName = `木地部生産高報告書_令和${year}年${month}月.pdf`;
 
@@ -290,6 +335,16 @@ export default function KijiReport({ defaultYear, defaultMonth, onClose }: Props
             <div className="kr-empty">この月のデータがありません</div>
           ) : (
             <>
+              {/* 編集の保存バー（画面のみ・印刷/PDFには出ない） */}
+              {canEdit && dirty && (
+                <div className="kr-save-bar no-print">
+                  <span className="kr-save-bar-msg">未保存の変更があります</span>
+                  <button className="kr-save-bar-btn" onClick={handleSaveEdits} disabled={saving}>
+                    {saving ? 'サーバーに保存中...' : '✓ 変更を保存'}
+                  </button>
+                </div>
+              )}
+
               {/* Table section */}
               <div className="kr-section-wrap">
                 <div className="kr-section-badge">生産明細</div>
@@ -302,14 +357,17 @@ export default function KijiReport({ defaultYear, defaultMonth, onClose }: Props
                       <th className="kr-th-count">本数</th>
                       <th className="kr-th-price">単価</th>
                       <th className="kr-th-amount">金額</th>
+                      {canEdit && <th className="kr-th-edit no-print">編集・並べ替え</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {cats.map(cat => {
-                      const catItems = items.filter(i => (i.category || 'その他') === cat);
+                      const catRows = items
+                        .map((item, gIdx) => ({ item, gIdx }))
+                        .filter(({ item }) => (item.category || 'その他') === cat);
                       const cs = catStyle(cat);
-                      return catItems.map((item, idx) => (
-                        <tr key={`${cat}-${idx}`} className={`kr-data-row${item.excluded ? ' kr-excluded-row' : ''}`}>
+                      return catRows.map(({ item, gIdx }, posInCat) => (
+                        <tr key={gIdx} className={`kr-data-row${item.excluded ? ' kr-excluded-row' : ''}`}>
                           <td className="kr-td-code">{item.code}</td>
                           <td className="kr-td-cat">
                             <span className="kr-cat-chip" style={{ background: cs.bg, color: cs.color }}>
@@ -328,6 +386,20 @@ export default function KijiReport({ defaultYear, defaultMonth, onClose }: Props
                           <td className="kr-td-amount">
                             {item.amount > 0 ? `¥${item.amount.toLocaleString()}` : '—'}
                           </td>
+                          {canEdit && (
+                            <td className="kr-td-edit no-print">
+                              <label className="kr-excl-check" title="チェックすると本数の集計から除外（金額には含む）">
+                                <input type="checkbox" checked={!!item.excluded} onChange={() => toggleExcluded(gIdx)} />
+                                除外
+                              </label>
+                              <span className="kr-move-btns">
+                                <button className="kr-move-btn" disabled={posInCat === 0}
+                                  onClick={() => moveItem(gIdx, -1)} title="上へ">▲</button>
+                                <button className="kr-move-btn" disabled={posInCat === catRows.length - 1}
+                                  onClick={() => moveItem(gIdx, 1)} title="下へ">▼</button>
+                              </span>
+                            </td>
+                          )}
                         </tr>
                       ));
                     })}
@@ -340,6 +412,7 @@ export default function KijiReport({ defaultYear, defaultMonth, onClose }: Props
                       <td className="kr-total-amount">
                         {totalAmount > 0 ? `¥${totalAmount.toLocaleString()}` : '—'}
                       </td>
+                      {canEdit && <td className="no-print" />}
                     </tr>
                   </tfoot>
                 </table>
