@@ -26,6 +26,16 @@ function catStyle(cat: string) {
   return CAT_STYLE[cat] ?? { bg: '#f0f0f0', color: '#555' };
 }
 
+// 従来のカテゴリー別グループ表示と同じ並びに整列（初期表示用）
+function groupedOrder(list: KijiItem[]): KijiItem[] {
+  const cats = [...new Set(list.map(i => i.category || 'その他'))];
+  const result: KijiItem[] = [];
+  cats.forEach(cat => {
+    list.forEach(it => { if ((it.category || 'その他') === cat) result.push(it); });
+  });
+  return result;
+}
+
 // ── Donut chart ──────────────────────────────────────────────────────────────
 
 function DonutChart({ cats, items, getValue, unit }: {
@@ -140,10 +150,10 @@ export default function KijiReport({ defaultYear, defaultMonth, canEdit = false,
   }, []);
   const [year,  setYear]  = useState(defaultYear  ?? availableYears[0] ?? currentReiwa);
   const [month, setMonth] = useState(defaultMonth ?? new Date().getMonth() + 1);
-  const [items, setItems] = useState<KijiItem[]>(() => loadKijiItems(year, month));
+  const [items, setItems] = useState<KijiItem[]>(() => groupedOrder(loadKijiItems(year, month)));
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  useEffect(() => { setItems(loadKijiItems(year, month)); setDirty(false); }, [year, month]);
+  useEffect(() => { setItems(groupedOrder(loadKijiItems(year, month))); setDirty(false); }, [year, month]);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -155,16 +165,11 @@ export default function KijiReport({ defaultYear, defaultMonth, canEdit = false,
     setDirty(true);
   };
 
-  // 同じカテゴリー内で上下に並べ替え（ボタン用）
+  // 上下に1つずつ並べ替え（ボタン用・リスト全体）
   const moveItem = (gIdx: number, dir: -1 | 1) => {
     setItems(prev => {
-      const cat = prev[gIdx].category || 'その他';
-      const sameCat = prev.map((it, i) => ({ it, i }))
-        .filter(x => (x.it.category || 'その他') === cat).map(x => x.i);
-      const pos = sameCat.indexOf(gIdx);
-      const tPos = pos + dir;
-      if (tPos < 0 || tPos >= sameCat.length) return prev;
-      const tIdx = sameCat[tPos];
+      const tIdx = gIdx + dir;
+      if (tIdx < 0 || tIdx >= prev.length) return prev;
       const next = [...prev];
       [next[gIdx], next[tIdx]] = [next[tIdx], next[gIdx]];
       return next;
@@ -172,27 +177,25 @@ export default function KijiReport({ defaultYear, defaultMonth, canEdit = false,
     setDirty(true);
   };
 
-  // ドラッグ＆ドロップで自由に並べ替え（同じカテゴリー内）
+  // ドラッグ＆ドロップで自由に並べ替え（リスト全体・好きな位置へ）
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
+  const [overAfter, setOverAfter] = useState(false);
 
-  const reorder = (fromIdx: number, toIdx: number) => {
+  const reorder = (fromIdx: number, toIdx: number, after: boolean) => {
     setItems(prev => {
-      if (fromIdx === toIdx) return prev;
-      const fromCat = prev[fromIdx].category || 'その他';
-      const toCat   = prev[toIdx].category   || 'その他';
-      if (fromCat !== toCat) return prev; // 同じカテゴリー内のみ
       const next = [...prev];
       const [moved] = next.splice(fromIdx, 1);
-      const adjTo = fromIdx < toIdx ? toIdx - 1 : toIdx;
-      next.splice(adjTo, 0, moved);
+      let insertAt = toIdx + (after ? 1 : 0);
+      if (fromIdx < insertAt) insertAt -= 1;
+      next.splice(insertAt, 0, moved);
       return next;
     });
     setDirty(true);
   };
 
   const handleDrop = (gIdx: number) => {
-    if (dragIdx !== null) reorder(dragIdx, gIdx);
+    if (dragIdx !== null && dragIdx !== gIdx) reorder(dragIdx, gIdx, overAfter);
     setDragIdx(null);
     setOverIdx(null);
   };
@@ -394,23 +397,24 @@ export default function KijiReport({ defaultYear, defaultMonth, canEdit = false,
                     </tr>
                   </thead>
                   <tbody>
-                    {cats.map(cat => {
-                      const catRows = items
-                        .map((item, gIdx) => ({ item, gIdx }))
-                        .filter(({ item }) => (item.category || 'その他') === cat);
+                    {items.map((item, gIdx) => {
+                      const cat = item.category || 'その他';
                       const cs = catStyle(cat);
-                      return catRows.map(({ item, gIdx }, posInCat) => (
+                      const overCls = overIdx === gIdx && dragIdx !== gIdx
+                        ? (overAfter ? ' kr-drag-after' : ' kr-drag-before') : '';
+                      return (
                         <tr key={gIdx}
                           className={`kr-data-row${item.excluded ? ' kr-excluded-row' : ''}`
-                            + (dragIdx === gIdx ? ' kr-dragging' : '')
-                            + (overIdx === gIdx && dragIdx !== gIdx ? ' kr-drag-over' : '')}
+                            + (dragIdx === gIdx ? ' kr-dragging' : '') + overCls}
                           draggable={canEdit}
                           onDragStart={() => canEdit && setDragIdx(gIdx)}
                           onDragOver={e => {
                             if (!canEdit || dragIdx === null) return;
-                            if ((items[dragIdx].category || 'その他') !== (item.category || 'その他')) return;
                             e.preventDefault();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const after = e.clientY > rect.top + rect.height / 2;
                             setOverIdx(gIdx);
+                            setOverAfter(after);
                           }}
                           onDrop={() => canEdit && handleDrop(gIdx)}
                           onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
@@ -443,16 +447,16 @@ export default function KijiReport({ defaultYear, defaultMonth, canEdit = false,
                                 除外
                               </label>
                               <span className="kr-move-btns">
-                                <button className="kr-move-btn" disabled={posInCat === 0}
+                                <button className="kr-move-btn" disabled={gIdx === 0}
                                   onClick={() => moveItem(gIdx, -1)} title="上へ">▲</button>
-                                <button className="kr-move-btn" disabled={posInCat === catRows.length - 1}
+                                <button className="kr-move-btn" disabled={gIdx === items.length - 1}
                                   onClick={() => moveItem(gIdx, 1)} title="下へ">▼</button>
                               </span>
                               <button className="kr-del-btn" onClick={() => deleteItem(gIdx)} title="削除">✕</button>
                             </td>
                           )}
                         </tr>
-                      ));
+                      );
                     })}
                   </tbody>
                   <tfoot>
