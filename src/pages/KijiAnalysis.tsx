@@ -35,7 +35,7 @@ interface MonthStat {
 function groupByProduct(items: KijiItem[]): ProductStat[] {
   const map = new Map<string, ProductStat>();
   for (const item of items) {
-    if (item.excluded) continue;
+    if (item.excluded || (item.category || 'その他') === '備考') continue;
     // Key by category+name so same-name products always merge
     const k = `${item.category}_${item.name}`;
     if (!map.has(k)) {
@@ -54,7 +54,7 @@ function groupByProduct(items: KijiItem[]): ProductStat[] {
 function groupByCategory(items: KijiItem[], products: ProductStat[]): CategoryStat[] {
   const map = new Map<string, CategoryStat>();
   for (const item of items) {
-    if (item.excluded) continue;
+    if (item.excluded || (item.category || 'その他') === '備考') continue;
     const cat = item.category || 'その他';
     if (!map.has(cat)) map.set(cat, { category: cat, totalCount: 0, totalAmount: 0, products: [] });
     const s = map.get(cat)!;
@@ -71,7 +71,7 @@ function groupByCategory(items: KijiItem[], products: ProductStat[]): CategorySt
 function groupByMonth(items: KijiItem[]): MonthStat[] {
   const map = new Map<string, MonthStat>();
   for (const item of items) {
-    if (item.excluded) continue;
+    if (item.excluded || (item.category || 'その他') === '備考') continue;
     const k = `${item.year}_${item.month}`;
     if (!map.has(k)) map.set(k, { year: item.year, month: item.month, totalCount: 0, totalAmount: 0 });
     const s = map.get(k)!;

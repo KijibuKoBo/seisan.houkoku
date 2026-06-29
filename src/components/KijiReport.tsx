@@ -27,11 +27,22 @@ function catStyle(cat: string) {
 }
 
 // 従来のカテゴリー別グループ表示と同じ並びに整列（初期表示用）
+// 「備考」は直前の商品にくっつけて一緒に移動させる
 function groupedOrder(list: KijiItem[]): KijiItem[] {
-  const cats = [...new Set(list.map(i => i.category || 'その他'))];
+  // 各商品に続く備考をまとめてユニット化
+  const units: KijiItem[][] = [];
+  list.forEach(it => {
+    if ((it.category || 'その他') === '備考' && units.length > 0) {
+      units[units.length - 1].push(it);
+    } else {
+      units.push([it]);
+    }
+  });
+  // ユニット先頭（商品）のカテゴリーでグループ化
+  const cats = [...new Set(units.map(u => u[0].category || 'その他'))];
   const result: KijiItem[] = [];
   cats.forEach(cat => {
-    list.forEach(it => { if ((it.category || 'その他') === cat) result.push(it); });
+    units.forEach(u => { if ((u[0].category || 'その他') === cat) result.push(...u); });
   });
   return result;
 }
@@ -281,15 +292,18 @@ export default function KijiReport({ defaultYear, defaultMonth, canEdit = false,
     }
   };
 
-  const active       = items.filter(i => !i.excluded);
+  // 「備考」＝上の商品を補足する注記。本数・金額・製品数・グラフには含めない
+  const isNote = (i: KijiItem) => (i.category || 'その他') === '備考';
+  const realItems    = items.filter(i => !isNote(i));
+  const active       = realItems.filter(i => !i.excluded);
   const totalCount   = active.reduce((s, i) => s + i.count,  0);
-  const totalAmount  = items.reduce((s, i) => s + i.amount, 0);  // 本数に含まない品目も金額には含む
+  const totalAmount  = realItems.reduce((s, i) => s + i.amount, 0);  // 本数に含まない品目も金額には含む（備考は除く）
   const productCount = new Set(active.map(i => `${i.category}_${i.name}`)).size;
   const specialItems = active.filter(i => (i.category || 'その他') === '特注');
   const specialCount = new Set(specialItems.map(i => i.name)).size;
 
-  // 除外含む全カテゴリーで行を並べるが、ドーナツ・備考は active のみ
-  const cats  = [...new Set(items.map(i => i.category || 'その他'))];
+  // ドーナツは備考を除いた実カテゴリーのみ
+  const cats  = [...new Set(realItems.map(i => i.category || 'その他'))];
   const today = new Date().toLocaleDateString('ja-JP');
   const notes = genNotes(totalCount, totalAmount, [...new Set(active.map(i => i.category || 'その他'))], active);
 
@@ -419,33 +433,47 @@ export default function KijiReport({ defaultYear, defaultMonth, canEdit = false,
                           onDrop={() => canEdit && handleDrop(gIdx)}
                           onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
                         >
-                          <td className="kr-td-code">
-                            {canEdit && <span className="kr-drag-handle no-print" title="ドラッグで並べ替え">⠿</span>}
-                            {item.code}
-                          </td>
-                          <td className="kr-td-cat">
-                            <span className="kr-cat-chip" style={{ background: cs.bg, color: cs.color }}>
-                              {cat}
-                            </span>
-                          </td>
-                          <td className="kr-td-name">{item.name}</td>
-                          <td className="kr-td-count">
-                            {item.excluded
-                              ? <><span style={{ color: '#aaa' }}>{item.count}本</span><span className="kr-excluded-note">本数に含まない</span></>
-                              : `${item.count}本`}
-                          </td>
-                          <td className="kr-td-price">
-                            {item.unitPrice > 0 ? `¥${item.unitPrice.toLocaleString()}` : '—'}
-                          </td>
-                          <td className="kr-td-amount">
-                            {item.amount > 0 ? `¥${item.amount.toLocaleString()}` : '—'}
-                          </td>
+                          {isNote(item) ? (
+                            <>
+                              <td className="kr-td-code">
+                                {canEdit && <span className="kr-drag-handle no-print" title="ドラッグで並べ替え">⠿</span>}
+                              </td>
+                              <td className="kr-td-cat"><span className="kr-note-label">備考</span></td>
+                              <td className="kr-td-name kr-note-text" colSpan={4}>{item.name}</td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="kr-td-code">
+                                {canEdit && <span className="kr-drag-handle no-print" title="ドラッグで並べ替え">⠿</span>}
+                                {item.code}
+                              </td>
+                              <td className="kr-td-cat">
+                                <span className="kr-cat-chip" style={{ background: cs.bg, color: cs.color }}>
+                                  {cat}
+                                </span>
+                              </td>
+                              <td className="kr-td-name">{item.name}</td>
+                              <td className="kr-td-count">
+                                {item.excluded
+                                  ? <><span style={{ color: '#aaa' }}>{item.count}本</span><span className="kr-excluded-note">本数に含まない</span></>
+                                  : `${item.count}本`}
+                              </td>
+                              <td className="kr-td-price">
+                                {item.unitPrice > 0 ? `¥${item.unitPrice.toLocaleString()}` : '—'}
+                              </td>
+                              <td className="kr-td-amount">
+                                {item.amount > 0 ? `¥${item.amount.toLocaleString()}` : '—'}
+                              </td>
+                            </>
+                          )}
                           {canEdit && (
                             <td className="kr-td-edit no-print">
-                              <label className="kr-excl-check" title="チェックすると本数の集計から除外（金額には含む）">
-                                <input type="checkbox" checked={!!item.excluded} onChange={() => toggleExcluded(gIdx)} />
-                                除外
-                              </label>
+                              {!isNote(item) && (
+                                <label className="kr-excl-check" title="チェックすると本数の集計から除外（金額には含む）">
+                                  <input type="checkbox" checked={!!item.excluded} onChange={() => toggleExcluded(gIdx)} />
+                                  除外
+                                </label>
+                              )}
                               <span className="kr-move-btns">
                                 <button className="kr-move-btn" disabled={gIdx === 0}
                                   onClick={() => moveItem(gIdx, -1)} title="上へ">▲</button>
@@ -481,7 +509,7 @@ export default function KijiReport({ defaultYear, defaultMonth, canEdit = false,
                 </div>
                 <div className="kr-bottom-card">
                   <div className="kr-bottom-title">カテゴリー別 金額割合</div>
-                  <DonutChart cats={cats} items={items} getValue={i => i.amount} unit="円" />
+                  <DonutChart cats={cats} items={realItems} getValue={i => i.amount} unit="円" />
                 </div>
                 <div className="kr-bottom-card">
                   <div className="kr-bottom-title">📋 備考</div>

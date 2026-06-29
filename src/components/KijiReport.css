@@ -227,6 +227,32 @@
   white-space: nowrap;
 }
 
+/* Note rows (備考) — 上の商品を補足する注記 */
+.kr-note-row td {
+  background: #fafbfc;
+  border-bottom: 1px solid #f0f0f0;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+.kr-note-label {
+  display: inline-block;
+  font-size: 10px;
+  color: #999;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1px 8px;
+}
+.kr-note-text {
+  color: #777 !important;
+  font-size: 12px;
+  font-style: italic;
+}
+.kr-note-text::before {
+  content: '└ ';
+  color: #bbb;
+  font-style: normal;
+}
+
 /* Excluded rows */
 .kr-excluded-row td {
   opacity: 0.55;

@@ -13,6 +13,7 @@ export const CATEGORY_FULL: Record<string, string> = {
   'リリー':'リリー',
   '特注':  '特注',
   'その他':'その他',
+  '備考':  '備考',
 };
 
 // 原価データベースの初期シードデータ（ODSファイルより）
@@ -156,4 +157,4 @@ export const PRODUCT_LIST: ProductDef[] = [
   { name: 'ドールハウスL字', category: 'PC', unitPrice: 20000 },
 ];
 
-export const CATEGORIES = ['Co', 'MP', '仏壇', 'リリー', 'PC', '特注', 'その他'] as const;
+export const CATEGORIES = ['Co', 'MP', '仏壇', 'リリー', 'PC', '特注', 'その他', '備考'] as const;
