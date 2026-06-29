@@ -155,7 +155,7 @@ export default function KijiReport({ defaultYear, defaultMonth, canEdit = false,
     setDirty(true);
   };
 
-  // 同じカテゴリー内で上下に並べ替え
+  // 同じカテゴリー内で上下に並べ替え（ボタン用）
   const moveItem = (gIdx: number, dir: -1 | 1) => {
     setItems(prev => {
       const cat = prev[gIdx].category || 'その他';
@@ -169,6 +169,39 @@ export default function KijiReport({ defaultYear, defaultMonth, canEdit = false,
       [next[gIdx], next[tIdx]] = [next[tIdx], next[gIdx]];
       return next;
     });
+    setDirty(true);
+  };
+
+  // ドラッグ＆ドロップで自由に並べ替え（同じカテゴリー内）
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
+
+  const reorder = (fromIdx: number, toIdx: number) => {
+    setItems(prev => {
+      if (fromIdx === toIdx) return prev;
+      const fromCat = prev[fromIdx].category || 'その他';
+      const toCat   = prev[toIdx].category   || 'その他';
+      if (fromCat !== toCat) return prev; // 同じカテゴリー内のみ
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      const adjTo = fromIdx < toIdx ? toIdx - 1 : toIdx;
+      next.splice(adjTo, 0, moved);
+      return next;
+    });
+    setDirty(true);
+  };
+
+  const handleDrop = (gIdx: number) => {
+    if (dragIdx !== null) reorder(dragIdx, gIdx);
+    setDragIdx(null);
+    setOverIdx(null);
+  };
+
+  // 行を削除
+  const deleteItem = (gIdx: number) => {
+    const it = items[gIdx];
+    if (!window.confirm(`「${it.name}」を削除しますか？`)) return;
+    setItems(prev => prev.filter((_, i) => i !== gIdx));
     setDirty(true);
   };
 
@@ -357,7 +390,7 @@ export default function KijiReport({ defaultYear, defaultMonth, canEdit = false,
                       <th className="kr-th-count">本数</th>
                       <th className="kr-th-price">単価</th>
                       <th className="kr-th-amount">金額</th>
-                      {canEdit && <th className="kr-th-edit no-print">編集・並べ替え</th>}
+                      {canEdit && <th className="kr-th-edit no-print">編集・並べ替え・削除</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -367,8 +400,25 @@ export default function KijiReport({ defaultYear, defaultMonth, canEdit = false,
                         .filter(({ item }) => (item.category || 'その他') === cat);
                       const cs = catStyle(cat);
                       return catRows.map(({ item, gIdx }, posInCat) => (
-                        <tr key={gIdx} className={`kr-data-row${item.excluded ? ' kr-excluded-row' : ''}`}>
-                          <td className="kr-td-code">{item.code}</td>
+                        <tr key={gIdx}
+                          className={`kr-data-row${item.excluded ? ' kr-excluded-row' : ''}`
+                            + (dragIdx === gIdx ? ' kr-dragging' : '')
+                            + (overIdx === gIdx && dragIdx !== gIdx ? ' kr-drag-over' : '')}
+                          draggable={canEdit}
+                          onDragStart={() => canEdit && setDragIdx(gIdx)}
+                          onDragOver={e => {
+                            if (!canEdit || dragIdx === null) return;
+                            if ((items[dragIdx].category || 'その他') !== (item.category || 'その他')) return;
+                            e.preventDefault();
+                            setOverIdx(gIdx);
+                          }}
+                          onDrop={() => canEdit && handleDrop(gIdx)}
+                          onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
+                        >
+                          <td className="kr-td-code">
+                            {canEdit && <span className="kr-drag-handle no-print" title="ドラッグで並べ替え">⠿</span>}
+                            {item.code}
+                          </td>
                           <td className="kr-td-cat">
                             <span className="kr-cat-chip" style={{ background: cs.bg, color: cs.color }}>
                               {cat}
@@ -398,6 +448,7 @@ export default function KijiReport({ defaultYear, defaultMonth, canEdit = false,
                                 <button className="kr-move-btn" disabled={posInCat === catRows.length - 1}
                                   onClick={() => moveItem(gIdx, 1)} title="下へ">▼</button>
                               </span>
+                              <button className="kr-del-btn" onClick={() => deleteItem(gIdx)} title="削除">✕</button>
                             </td>
                           )}
                         </tr>

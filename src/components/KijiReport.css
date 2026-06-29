@@ -376,12 +376,43 @@
 .kr-save-bar-btn:hover { background: #256528; }
 .kr-save-bar-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.kr-th-edit { width: 130px; }
+.kr-th-edit { width: 200px; }
 
 .kr-td-edit {
   text-align: center;
   white-space: nowrap;
 }
+
+/* ドラッグハンドル */
+.kr-drag-handle {
+  display: inline-block;
+  margin-right: 5px;
+  color: #b0bccd;
+  cursor: grab;
+  font-size: 13px;
+  letter-spacing: -2px;
+  vertical-align: middle;
+}
+.kr-data-row[draggable="true"] { cursor: grab; }
+.kr-dragging { opacity: 0.4; }
+.kr-drag-over td { border-top: 2px solid #2e7d32 !important; }
+
+/* 削除ボタン */
+.kr-del-btn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #f0c0c0;
+  background: #fff0f0;
+  color: #c0392b;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.kr-del-btn:hover { background: #ffe0e0; }
 
 .kr-excl-check {
   display: inline-flex;
