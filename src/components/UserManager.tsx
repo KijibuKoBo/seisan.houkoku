@@ -110,6 +110,8 @@ export default function UserManager() {
                   >
                     <option value="admin">管理者</option>
                     <option value="viewer">閲覧のみ</option>
+                    <option value="tosou">塗装部（入力）</option>
+                    <option value="matome">まとめ部（入力）</option>
                   </select>
                 </td>
                 <td className="um-actions">
@@ -174,6 +176,8 @@ export default function UserManager() {
             <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as Role }))}>
               <option value="viewer">閲覧のみ</option>
               <option value="admin">管理者</option>
+              <option value="tosou">塗装部（入力）</option>
+              <option value="matome">まとめ部（入力）</option>
             </select>
           </div>
           <button type="submit" className="btn-primary" disabled={saving}>

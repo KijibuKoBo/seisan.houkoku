@@ -14,6 +14,14 @@ export async function apiSet(key: string, value: string): Promise<void> {
   } catch { /* best effort — app still works via localStorage */ }
 }
 
+// サーバーから単一キーの最新値を取得（失敗時は例外）
+export async function apiGetStrict(key: string): Promise<string | null> {
+  const res = await fetch(`${API}?key=${encodeURIComponent(key)}`, { headers: { 'X-Token': TOKEN } });
+  if (!res.ok) throw new Error(`サーバーエラー (${res.status})`);
+  const text = await res.text();
+  return text === 'null' || text === '' ? null : text;
+}
+
 // 厳格版: 失敗時に例外を投げる（ユーザー管理など重要操作用）
 export async function apiSetStrict(key: string, value: string): Promise<void> {
   let res: Response;

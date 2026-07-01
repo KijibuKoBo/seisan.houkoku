@@ -47,33 +47,45 @@ export async function pushUsersToServer(): Promise<void> {
   if (json) await apiSetStrict(USERS_KEY, json);
 }
 
+// 既定ユーザーの定義（初期作成・マイグレーション両方で使用）
+const DEFAULT_USERS: { id: string; password: string; displayName: string; role: Role }[] = [
+  { id: 'admin',  password: 'admin123', displayName: '管理者',   role: 'admin' },
+  { id: 'jimu',   password: 'jimu123',  displayName: '事務',     role: 'viewer' },
+  { id: 'kobo',   password: '7722',     displayName: '木地工房', role: 'admin' },
+  { id: 'tosou',  password: 'kobo7722', displayName: '塗装部',   role: 'tosou' },
+  { id: 'matome', password: 'kobo7722', displayName: 'まとめ部', role: 'matome' },
+];
+
 export async function initDefaultUsers(): Promise<void> {
   try {
     const existing = loadUsers();
     if (existing.length > 0) return;
-    const adminHash = await sha256('admin123');
-    const jimuHash  = await sha256('jimu123');
-    const koboHash  = await sha256('7722');
-    saveUsers([
-      { id: 'admin', passwordHash: adminHash, displayName: '管理者', role: 'admin' },
-      { id: 'jimu',  passwordHash: jimuHash,  displayName: '事務',   role: 'viewer' },
-      { id: 'kobo',  passwordHash: koboHash,  displayName: '木地工房', role: 'admin' },
-    ]);
+    const users: User[] = [];
+    for (const d of DEFAULT_USERS) {
+      users.push({ id: d.id, passwordHash: await sha256(d.password), displayName: d.displayName, role: d.role });
+    }
+    saveUsers(users);
   } catch (e) {
     console.error('initDefaultUsers failed:', e);
   }
 }
 
-// 既存のローカルデータに kobo がいなければ補完する（マイグレーション）
-export async function ensureKoboUser(): Promise<void> {
+// 既存環境に不足している既定ユーザー（kobo/tosou/matome など）を補完する
+export async function ensureDefaultUsers(): Promise<void> {
   try {
     const users = loadUsers();
     if (users.length === 0) return; // initDefaultUsersが処理
-    if (users.find(u => u.id === 'kobo')) return; // すでに存在
-    const koboHash = await sha256('7722');
-    saveUsers([...users, { id: 'kobo', passwordHash: koboHash, displayName: '木地工房', role: 'admin' }]);
+    let changed = false;
+    const next = [...users];
+    for (const d of DEFAULT_USERS) {
+      if (d.id === 'admin' || d.id === 'jimu') continue; // 既存の可能性が高いものは触らない
+      if (next.find(u => u.id === d.id)) continue;
+      next.push({ id: d.id, passwordHash: await sha256(d.password), displayName: d.displayName, role: d.role });
+      changed = true;
+    }
+    if (changed) saveUsers(next);
   } catch (e) {
-    console.error('ensureKoboUser failed:', e);
+    console.error('ensureDefaultUsers failed:', e);
   }
 }
 

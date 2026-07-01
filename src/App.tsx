@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { YearStore, MonthData, AuthSession, KijiItem } from './types';
 import { loadStore, saveStore, pushStoreToServer, setMonthData } from './utils/store';
-import { initDefaultUsers, ensureKoboUser, getSession, logout } from './utils/auth';
+import { initDefaultUsers, ensureDefaultUsers, getSession, logout } from './utils/auth';
 import { saveKijiItems, migrateCategories, pushKijiToServer } from './utils/kijiStore';
 import { syncFromServer, logChange, getChangeLogs } from './utils/api';
 import { seedCostDatabaseIfEmpty } from './utils/costStore';
@@ -11,6 +11,7 @@ import LoginPage from './components/LoginPage';
 import UserManager from './components/UserManager';
 import KijiAnalysis from './pages/KijiAnalysis';
 import CostDatabase from './pages/CostDatabase';
+import DeptInput from './pages/DeptInput';
 import KijiReport from './components/KijiReport';
 import YearlyReport from './components/YearlyReport';
 import ChangeLog from './components/ChangeLog';
@@ -46,7 +47,7 @@ export default function App() {
       .catch(() => setSyncError(true))
       .finally(async () => {
         await initDefaultUsers();
-        await ensureKoboUser();
+        await ensureDefaultUsers();
         migrateCategories();
         seedCostDatabaseIfEmpty();
         setStore(loadStore());
@@ -144,6 +145,19 @@ export default function App() {
 
   if (!session) {
     return <LoginPage onLogin={handleLogin} />;
+  }
+
+  // 塗装部・まとめ部は専用の入力画面のみを表示
+  if (session.role === 'tosou' || session.role === 'matome') {
+    return (
+      <DeptInput
+        session={session}
+        dept={session.role}
+        store={store}
+        onSaved={setStore}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   const canEdit = session.role === 'admin';
