@@ -131,6 +131,44 @@
 .dept-save-btn:hover:not(:disabled) { background: #256528; }
 .dept-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* 入力履歴 */
+.dept-history-wrap { margin-top: 18px; }
+.dept-history-toggle {
+  width: 100%;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #c5cfdb;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #1a3a5c;
+  font-family: inherit;
+  font-weight: 600;
+}
+.dept-history-toggle:hover { background: #f5f8fc; }
+.dept-history-card { margin-top: 10px; padding: 12px; }
+.dept-history-empty { text-align: center; color: #999; padding: 20px; font-size: 13px; }
+
+.dept-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.dept-history-table th {
+  background: #eef3f8;
+  color: #1a3a5c;
+  padding: 7px 8px;
+  text-align: left;
+  font-size: 12px;
+}
+.dept-history-table td {
+  border-bottom: 1px solid #eee;
+  padding: 7px 8px;
+  vertical-align: top;
+}
+.dept-history-ts { white-space: nowrap; color: #666; width: 130px; }
+.dept-history-sum { color: #333; line-height: 1.5; }
+
 /* スマホ対応 */
 @media (max-width: 520px) {
   .dept-header h1 { font-size: 16px; }

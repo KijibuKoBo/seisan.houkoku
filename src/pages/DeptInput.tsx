@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { YearStore, AuthSession, SectionData } from '../types';
+import { YearStore, AuthSession, SectionData, ChangeLogEntry } from '../types';
 import { saveDeptMonths } from '../utils/store';
-import { logChange } from '../utils/api';
+import { logChange, getChangeLogs } from '../utils/api';
 import './DeptInput.css';
 
 interface Props {
@@ -31,6 +31,30 @@ export default function DeptInput({ session, dept, store, onSaved, onLogout }: P
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
+  // 入力履歴
+  const [showHistory, setShowHistory] = useState(false);
+  const [logs, setLogs] = useState<ChangeLogEntry[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+
+  const loadHistory = () => {
+    setLogsLoading(true);
+    getChangeLogs()
+      .then(all => setLogs(all.filter(l => l.user === session.displayName)))
+      .finally(() => setLogsLoading(false));
+  };
+
+  const toggleHistory = () => {
+    const next = !showHistory;
+    setShowHistory(next);
+    if (next) loadHistory();
+  };
+
+  const fmtTs = (ts: string) => {
+    const d = new Date(ts);
+    return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} `
+      + `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  };
+
   // 選択年のデータを読み込む
   useEffect(() => {
     const next: Record<number, SectionData> = {};
@@ -52,13 +76,24 @@ export default function DeptInput({ session, dept, store, onSaved, onLogout }: P
   const handleSave = async () => {
     setSaving(true);
     setError('');
+    // 変更点（保存前の store の値と比較）を月ごとに集計
+    const diffs: string[] = [];
+    MONTHS.forEach(m => {
+      const oldSec = store[year]?.[m]?.[dept];
+      const oc = oldSec?.count ?? 0, oa = oldSec?.amount ?? 0;
+      const nc = rows[m]?.count ?? 0, na = rows[m]?.amount ?? 0;
+      if (oc !== nc || oa !== na) {
+        diffs.push(`${m}月 本数${oc}→${nc} / 金額${oa.toLocaleString()}→${na.toLocaleString()}`);
+      }
+    });
     try {
       const next = await saveDeptMonths(year, dept, rows);
       onSaved(next);
-      // 変更ログ（月ごとの合計だけ簡潔に）
-      logChange(session.displayName, year, 0,
-        `${DEPT_LABEL[dept]} ${year}年 一括更新（本数計${totalCount} / 金額計${totalAmount.toLocaleString()}）`);
+      if (diffs.length > 0) {
+        await logChange(session.displayName, year, 0, `令和${year}年　${diffs.join(' ／ ')}`);
+      }
       setSaved(true);
+      if (showHistory) loadHistory();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'サーバー保存に失敗しました');
     } finally {
@@ -133,6 +168,36 @@ export default function DeptInput({ session, dept, store, onSaved, onLogout }: P
               {saving ? 'サーバーに保存中...' : saved ? '✓ 保存しました' : '💾 保存する'}
             </button>
           </div>
+        </div>
+
+        {/* 入力履歴 */}
+        <div className="dept-history-wrap">
+          <button className="dept-history-toggle" onClick={toggleHistory}>
+            {showHistory ? '▲ 入力履歴を閉じる' : '📋 自分の入力履歴を見る'}
+          </button>
+          {showHistory && (
+            <div className="dept-card dept-history-card">
+              {logsLoading ? (
+                <div className="dept-history-empty">読み込み中...</div>
+              ) : logs.length === 0 ? (
+                <div className="dept-history-empty">まだ履歴がありません</div>
+              ) : (
+                <table className="dept-history-table">
+                  <thead>
+                    <tr><th>日時</th><th>変更内容</th></tr>
+                  </thead>
+                  <tbody>
+                    {logs.map(l => (
+                      <tr key={l.id}>
+                        <td className="dept-history-ts">{fmtTs(l.ts)}</td>
+                        <td className="dept-history-sum">{l.summary}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
         </div>
       </main>
     </div>
