@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { YearStore, AuthSession, SectionData, ChangeLogEntry } from '../types';
-import { saveDeptMonths } from '../utils/store';
+import { saveDeptMonths, getUndoInfo, undoDept } from '../utils/store';
 import { logChange, getChangeLogs } from '../utils/api';
 import './DeptInput.css';
 
@@ -30,6 +30,15 @@ export default function DeptInput({ session, dept, store, onSaved, onLogout }: P
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+
+  // 元に戻す（直前の保存を1回だけ取り消し）
+  const [undoTs, setUndoTs] = useState<string | null>(null);
+  const [undoing, setUndoing] = useState(false);
+
+  const refreshUndo = () => {
+    getUndoInfo(dept).then(info => setUndoTs(info ? info.ts : null));
+  };
+  useEffect(() => { refreshUndo(); }, [dept]);
 
   // 入力履歴
   const [showHistory, setShowHistory] = useState(false);
@@ -93,12 +102,41 @@ export default function DeptInput({ session, dept, store, onSaved, onLogout }: P
         await logChange(session.displayName, year, 0, `令和${year}年　${diffs.join(' ／ ')}`);
       }
       setSaved(true);
+      refreshUndo();
       if (showHistory) loadHistory();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'サーバー保存に失敗しました');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleUndo = async () => {
+    if (!window.confirm('直前の保存を取り消して、1つ前の状態に戻します。よろしいですか？\n（戻せるのは1回だけです）')) return;
+    setUndoing(true);
+    setError('');
+    try {
+      const next = await undoDept(dept);
+      if (next) {
+        onSaved(next);
+        setSaved(false);
+        setUndoTs(null);
+        if (showHistory) loadHistory();
+        alert('1つ前の状態に戻しました。');
+      } else {
+        setUndoTs(null);
+        alert('戻せる保存がありませんでした。');
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '元に戻す処理に失敗しました');
+    } finally {
+      setUndoing(false);
+    }
+  };
+
+  const fmtTsShort = (ts: string) => {
+    const d = new Date(ts);
+    return `${String(d.getMonth()+1)}/${String(d.getDate())} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   };
 
   return (
@@ -164,10 +202,20 @@ export default function DeptInput({ session, dept, store, onSaved, onLogout }: P
           {error && <div className="dept-error">⚠ {error}</div>}
 
           <div className="dept-actions">
-            <button className="dept-save-btn" onClick={handleSave} disabled={saving}>
+            <button className="dept-save-btn" onClick={handleSave} disabled={saving || undoing}>
               {saving ? 'サーバーに保存中...' : saved ? '✓ 保存しました' : '💾 保存する'}
             </button>
+            {undoTs && (
+              <button className="dept-undo-btn" onClick={handleUndo} disabled={undoing || saving}>
+                {undoing ? '戻しています...' : `↩ 直前の保存を戻す（${fmtTsShort(undoTs)}）`}
+              </button>
+            )}
           </div>
+          {undoTs && (
+            <div className="dept-undo-note">
+              ※ 直前に保存した内容を1回だけ元に戻せます（どの端末からでも可）。
+            </div>
+          )}
         </div>
 
         {/* 入力履歴 */}

@@ -116,6 +116,30 @@
 .dept-actions {
   margin-top: 18px;
   text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+.dept-undo-btn {
+  padding: 11px 22px;
+  background: #fff;
+  color: #b26a00;
+  border: 1px solid #e0a960;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: inherit;
+}
+.dept-undo-btn:hover:not(:disabled) { background: #fff6e8; }
+.dept-undo-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.dept-undo-note {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 11px;
+  color: #999;
 }
 .dept-save-btn {
   padding: 12px 40px;

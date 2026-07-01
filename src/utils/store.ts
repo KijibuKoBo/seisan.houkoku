@@ -24,8 +24,18 @@ export async function pushStoreToServer(): Promise<void> {
   if (json) await apiSetStrict(KEY, json);
 }
 
+// 元に戻す用バックアップのキー（部門ごと・サーバー保存＝どの端末からでも戻せる）
+const UNDO_PREFIX = 'matsunaga_undo_';
+
+interface UndoBackup {
+  year: number;
+  months: Record<number, SectionData>;  // 保存直前（=1つ前）の値
+  ts: string;
+}
+
 // 部門（塗装・まとめ・木地）の指定年の各月データだけを安全に更新する。
 // 他部門の同時編集を上書きしないよう、サーバーの最新をベースにマージしてから保存する。
+// 保存直前の状態を「元に戻す」用にサーバーへ退避する。
 export async function saveDeptMonths(
   year: number,
   dept: 'tosou' | 'matome' | 'kiji',
@@ -39,6 +49,15 @@ export async function saveDeptMonths(
     // サーバー取得に失敗したらローカルをベースにする
     base = loadStore();
   }
+
+  // 保存前の値を退避（変更する各月について）
+  const prevSnap: Record<number, SectionData> = {};
+  for (const m of Object.keys(months)) {
+    const mn = Number(m);
+    const sec = base[year]?.[mn]?.[dept];
+    prevSnap[mn] = { count: sec?.count ?? 0, amount: sec?.amount ?? 0 };
+  }
+
   const next: YearStore = { ...base };
   next[year] = { ...(next[year] ?? {}) };
   for (const [m, sec] of Object.entries(months)) {
@@ -49,6 +68,52 @@ export async function saveDeptMonths(
   const json = JSON.stringify(next);
   localStorage.setItem(KEY, json);
   await apiSetStrict(KEY, json);
+
+  // 戻す用バックアップをサーバーへ（失敗しても保存自体は成功扱い）
+  const backup: UndoBackup = { year, months: prevSnap, ts: new Date().toISOString() };
+  try { await apiSetStrict(UNDO_PREFIX + dept, JSON.stringify(backup)); } catch { /* best effort */ }
+
+  return next;
+}
+
+// 戻せるバックアップの有無を確認（どの端末からでもサーバーを見る）
+export async function getUndoInfo(dept: 'tosou' | 'matome' | 'kiji'): Promise<UndoBackup | null> {
+  try {
+    const json = await apiGetStrict(UNDO_PREFIX + dept);
+    return json ? JSON.parse(json) as UndoBackup : null;
+  } catch {
+    return null;
+  }
+}
+
+// 直前の保存を1回だけ取り消す。戻したらバックアップは消費される（連続で戻せない）。
+export async function undoDept(dept: 'tosou' | 'matome' | 'kiji'): Promise<YearStore | null> {
+  const json = await apiGetStrict(UNDO_PREFIX + dept);
+  if (!json) return null;
+  const backup = JSON.parse(json) as UndoBackup;
+
+  let base: YearStore;
+  try {
+    const serverJson = await apiGetStrict(KEY);
+    base = serverJson ? JSON.parse(serverJson) : loadStore();
+  } catch {
+    base = loadStore();
+  }
+
+  const next: YearStore = { ...base };
+  next[backup.year] = { ...(next[backup.year] ?? {}) };
+  for (const [m, sec] of Object.entries(backup.months)) {
+    const mn = Number(m);
+    const existing = next[backup.year][mn] ?? emptyMonth(mn);
+    next[backup.year][mn] = { ...existing, [dept]: { count: sec.count, amount: sec.amount } };
+  }
+  const storeJson = JSON.stringify(next);
+  localStorage.setItem(KEY, storeJson);
+  await apiSetStrict(KEY, storeJson);
+
+  // バックアップを消費（空にする＝もう戻せない）
+  try { await apiSetStrict(UNDO_PREFIX + dept, ''); } catch { /* best effort */ }
+
   return next;
 }
 
