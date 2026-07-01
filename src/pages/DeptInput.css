@@ -93,6 +93,15 @@
 .dept-table input:focus { outline: none; border-color: #1a3a5c; box-shadow: 0 0 0 2px rgba(26,58,92,0.15); }
 .dept-unit { margin-left: 5px; font-size: 12px; color: #888; }
 
+/* 営業の備考入力 */
+.dept-memo-input {
+  width: 90% !important;
+  max-width: none !important;
+  text-align: left !important;
+  font-size: 13px !important;
+}
+.dept-sales-table .dept-td-month { text-align: center; }
+
 .dept-table tfoot td {
   padding: 12px 8px;
   text-align: center;

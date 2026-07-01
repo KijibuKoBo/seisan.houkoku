@@ -12,6 +12,7 @@ import UserManager from './components/UserManager';
 import KijiAnalysis from './pages/KijiAnalysis';
 import CostDatabase from './pages/CostDatabase';
 import DeptInput from './pages/DeptInput';
+import EigyouInput from './pages/EigyouInput';
 import KijiReport from './components/KijiReport';
 import YearlyReport from './components/YearlyReport';
 import ChangeLog from './components/ChangeLog';
@@ -153,6 +154,18 @@ export default function App() {
       <DeptInput
         session={session}
         dept={session.role}
+        store={store}
+        onSaved={setStore}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  // 営業部は月ごとの売上入力画面のみを表示
+  if (session.role === 'eigyou') {
+    return (
+      <EigyouInput
+        session={session}
         store={store}
         onSaved={setStore}
         onLogout={handleLogout}

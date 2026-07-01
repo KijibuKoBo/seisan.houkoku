@@ -112,6 +112,7 @@ export default function UserManager() {
                     <option value="viewer">閲覧のみ</option>
                     <option value="tosou">塗装部（入力）</option>
                     <option value="matome">まとめ部（入力）</option>
+                    <option value="eigyou">営業部（入力）</option>
                   </select>
                 </td>
                 <td className="um-actions">
@@ -178,6 +179,7 @@ export default function UserManager() {
               <option value="admin">管理者</option>
               <option value="tosou">塗装部（入力）</option>
               <option value="matome">まとめ部（入力）</option>
+              <option value="eigyou">営業部（入力）</option>
             </select>
           </div>
           <button type="submit" className="btn-primary" disabled={saving}>

@@ -54,6 +54,7 @@ const DEFAULT_USERS: { id: string; password: string; displayName: string; role: 
   { id: 'kobo',   password: '7722',     displayName: '木地工房', role: 'admin' },
   { id: 'tosou',  password: 'kobo7722', displayName: '塗装部',   role: 'tosou' },
   { id: 'matome', password: 'kobo7722', displayName: 'まとめ部', role: 'matome' },
+  { id: 'eigyou', password: 'kobo7722', displayName: '営業部',   role: 'eigyou' },
 ];
 
 export async function initDefaultUsers(): Promise<void> {
