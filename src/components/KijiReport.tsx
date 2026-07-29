@@ -26,27 +26,6 @@ function catStyle(cat: string) {
   return CAT_STYLE[cat] ?? { bg: '#f0f0f0', color: '#555' };
 }
 
-// 従来のカテゴリー別グループ表示と同じ並びに整列（初期表示用）
-// 「備考」は直前の商品にくっつけて一緒に移動させる
-function groupedOrder(list: KijiItem[]): KijiItem[] {
-  // 各商品に続く備考をまとめてユニット化
-  const units: KijiItem[][] = [];
-  list.forEach(it => {
-    if ((it.category || 'その他') === '備考' && units.length > 0) {
-      units[units.length - 1].push(it);
-    } else {
-      units.push([it]);
-    }
-  });
-  // ユニット先頭（商品）のカテゴリーでグループ化
-  const cats = [...new Set(units.map(u => u[0].category || 'その他'))];
-  const result: KijiItem[] = [];
-  cats.forEach(cat => {
-    units.forEach(u => { if ((u[0].category || 'その他') === cat) result.push(...u); });
-  });
-  return result;
-}
-
 // ── Donut chart ──────────────────────────────────────────────────────────────
 
 function DonutChart({ cats, items, getValue, unit }: {
@@ -161,10 +140,10 @@ export default function KijiReport({ defaultYear, defaultMonth, canEdit = false,
   }, []);
   const [year,  setYear]  = useState(defaultYear  ?? availableYears[0] ?? currentReiwa);
   const [month, setMonth] = useState(defaultMonth ?? new Date().getMonth() + 1);
-  const [items, setItems] = useState<KijiItem[]>(() => groupedOrder(loadKijiItems(year, month)));
+  const [items, setItems] = useState<KijiItem[]>(() => loadKijiItems(year, month));
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  useEffect(() => { setItems(groupedOrder(loadKijiItems(year, month))); setDirty(false); }, [year, month]);
+  useEffect(() => { setItems(loadKijiItems(year, month)); setDirty(false); }, [year, month]);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
