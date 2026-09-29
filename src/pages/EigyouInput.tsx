@@ -3,6 +3,8 @@ import { YearStore, AuthSession, SalesData, ChangeLogEntry, emptySales } from '.
 import { saveSalesMonth, getUndoInfo, undoSales } from '../utils/store';
 import { salesTotal } from '../utils/calc';
 import { logChange, getChangeLogs } from '../utils/api';
+import { pickThanks } from '../utils/thanks';
+import ThankYouToast from '../components/ThankYouToast';
 import './DeptInput.css';
 
 interface Props {
@@ -38,6 +40,7 @@ export default function EigyouInput({ session, store, onSaved, onLogout }: Props
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [thanks, setThanks] = useState<string | null>(null);
 
   const [undoTs, setUndoTs] = useState<string | null>(null);
   const [undoing, setUndoing] = useState(false);
@@ -107,6 +110,7 @@ export default function EigyouInput({ session, store, onSaved, onLogout }: Props
         await logChange(session.displayName, year, month, diffs.join(' ／ '));
       }
       setSaved(true);
+      setThanks(pickThanks(session.displayName));
       refreshUndo();
       if (showHistory) loadHistory();
     } catch (e) {
@@ -252,6 +256,8 @@ export default function EigyouInput({ session, store, onSaved, onLogout }: Props
           )}
         </div>
       </main>
+
+      {thanks && <ThankYouToast message={thanks} onDone={() => setThanks(null)} />}
     </div>
   );
 }

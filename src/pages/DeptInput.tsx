@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { YearStore, AuthSession, SectionData, ChangeLogEntry } from '../types';
 import { saveDeptMonths, getUndoInfo, undoDept } from '../utils/store';
 import { logChange, getChangeLogs } from '../utils/api';
+import { pickThanks } from '../utils/thanks';
+import ThankYouToast from '../components/ThankYouToast';
 import './DeptInput.css';
 
 interface Props {
@@ -30,6 +32,7 @@ export default function DeptInput({ session, dept, store, onSaved, onLogout }: P
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [thanks, setThanks] = useState<string | null>(null);
 
   // 元に戻す（直前の保存を1回だけ取り消し）
   const [undoTs, setUndoTs] = useState<string | null>(null);
@@ -102,6 +105,7 @@ export default function DeptInput({ session, dept, store, onSaved, onLogout }: P
         await logChange(session.displayName, year, 0, `令和${year}年　${diffs.join(' ／ ')}`);
       }
       setSaved(true);
+      setThanks(pickThanks(session.displayName));
       refreshUndo();
       if (showHistory) loadHistory();
     } catch (e) {
@@ -248,6 +252,8 @@ export default function DeptInput({ session, dept, store, onSaved, onLogout }: P
           )}
         </div>
       </main>
+
+      {thanks && <ThankYouToast message={thanks} onDone={() => setThanks(null)} />}
     </div>
   );
 }

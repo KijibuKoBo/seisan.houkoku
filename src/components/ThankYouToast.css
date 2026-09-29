@@ -1,0 +1,78 @@
+.ty-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 30, 45, 0.28);
+  backdrop-filter: blur(2px);
+  animation: ty-bg-in 0.4s ease both;
+  cursor: pointer;
+}
+.ty-wrap.ty-leaving { animation: ty-bg-out 0.5s ease both; }
+
+@keyframes ty-bg-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ty-bg-out { from { opacity: 1; } to { opacity: 0; } }
+
+.ty-card {
+  position: relative;
+  background: linear-gradient(160deg, #ffffff 0%, #fff7f0 100%);
+  border-radius: 20px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.25);
+  padding: 30px 34px 22px;
+  max-width: 380px;
+  width: calc(100% - 48px);
+  text-align: center;
+  animation: ty-pop-in 0.5s cubic-bezier(0.18, 1.1, 0.5, 1.05) both;
+}
+.ty-leaving .ty-card { animation: ty-pop-out 0.5s ease both; }
+
+@keyframes ty-pop-in {
+  from { opacity: 0; transform: translateY(24px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+@keyframes ty-pop-out {
+  from { opacity: 1; transform: translateY(0)   scale(1); }
+  to   { opacity: 0; transform: translateY(-14px) scale(0.97); }
+}
+
+.ty-hearts {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  font-size: 20px;
+}
+.ty-hearts span {
+  display: inline-block;
+  color: #e58aa0;
+  animation: ty-float 2.4s ease-in-out infinite;
+}
+.ty-hearts span:nth-child(1) { animation-delay: 0s;    color: #e58aa0; }
+.ty-hearts span:nth-child(2) { animation-delay: 0.35s; color: #e0b23a; font-size: 22px; }
+.ty-hearts span:nth-child(3) { animation-delay: 0.7s;  color: #e58aa0; }
+
+@keyframes ty-float {
+  0%, 100% { transform: translateY(0);   opacity: 0.85; }
+  50%      { transform: translateY(-7px); opacity: 1; }
+}
+
+.ty-msg {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #3a4a5c;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.ty-hint {
+  margin-top: 14px;
+  font-size: 11px;
+  color: #bbb;
+}
+
+@media (max-width: 520px) {
+  .ty-msg { font-size: 15px; }
+  .ty-card { padding: 26px 24px 18px; }
+}
