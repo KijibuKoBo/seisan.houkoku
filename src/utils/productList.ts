@@ -4,6 +4,7 @@ export interface ProductDef {
   unitPrice: number;   // 木地代（＝単価。手間代＋材料代）
   labor?: number;      // 手間代（工賃分）
   material?: number;   // 材料代
+  plannedQty?: number; // 予定本数（所要日数の計算用）
 }
 
 // 略称 → 正規名（ドーナツ凡例など広い表示で使用）

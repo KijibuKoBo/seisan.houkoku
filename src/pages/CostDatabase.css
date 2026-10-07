@@ -103,12 +103,24 @@
   text-align: left;
 }
 
-.cd-th-no    { width: 44px; text-align: center !important; }
+.cd-th-no    { width: 40px; text-align: center !important; }
 .cd-th-name  { }
-.cd-th-price { width: 110px; text-align: right !important; }
-.cd-th-days  { width: 120px; text-align: right !important; }
+.cd-th-price { width: 92px; text-align: right !important; }
+.cd-th-days  { width: 108px; text-align: right !important; }
+.cd-th-qty   { width: 90px; text-align: right !important; }
 .cd-td-days  { text-align: right; color: #1565c0; font-size: 12px; white-space: nowrap; }
-.cd-th-act   { width: 140px; text-align: center !important; }
+.cd-total-days { color: #2e7d32; font-weight: bold; }
+.cd-th-act   { width: 130px; text-align: center !important; }
+.cd-auto {
+  display: inline-block; margin-left: 4px; font-size: 9px; color: #2e7d32;
+  background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 6px; padding: 0 4px; vertical-align: middle;
+}
+.cd-price-auto { background: #f6fbf7; }
+.cd-computed { font-weight: bold; color: #2e7d32; }
+.cd-td-qty { text-align: right; white-space: nowrap; }
+.cd-qty-input { width: 56px !important; text-align: right; }
+.cd-qty-unit { font-size: 11px; color: #888; margin-left: 3px; }
+.cd-add-price-preview { font-size: 12px; color: #2e7d32; font-weight: 600; white-space: nowrap; }
 
 .cd-row td {
   border-bottom: 1px solid #f0f4f8;
