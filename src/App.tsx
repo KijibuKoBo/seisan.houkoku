@@ -180,6 +180,9 @@ export default function App() {
   }
 
   const canEdit = session.role === 'admin';
+  // 原価管理の閲覧権限（admin=編集可、フクマ=閲覧のみ）
+  const canSeeCost = session.userId === 'admin' || session.userId === 'fukuma';
+  const canEditCost = session.userId === 'admin';
 
   return (
     <div className="app">
@@ -196,7 +199,7 @@ export default function App() {
             <button className="nav-btn" onClick={() => setShowKijiReport(true)}>
               木地部月次報告
             </button>
-            {session.userId === 'admin' && (
+            {canSeeCost && (
               <button className={`nav-btn ${page === 'cost' ? 'active' : ''}`} onClick={() => setPage('cost')}>
                 原価管理
               </button>
@@ -259,7 +262,7 @@ export default function App() {
 
         {page === 'kiji' && <KijiAnalysis store={store} onSaveMonthKiji={handleKijiMonthSave} canEdit={canEdit} />}
 
-        {page === 'cost' && session.userId === 'admin' && <CostDatabase />}
+        {page === 'cost' && canSeeCost && <CostDatabase readOnly={!canEditCost} />}
 
         {page === 'users' && canEdit && <UserManager />}
       </main>

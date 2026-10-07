@@ -82,7 +82,7 @@
   background: white;
   border-radius: 0 8px 8px 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .cd-table {
@@ -101,10 +101,12 @@
   font-size: 12px;
   font-weight: 600;
   text-align: left;
+  white-space: nowrap;
 }
 
 .cd-th-no    { width: 40px; text-align: center !important; }
-.cd-th-name  { }
+.cd-th-name  { min-width: 180px; }
+.cd-td-name  { white-space: nowrap; }
 .cd-th-price { width: 92px; text-align: right !important; }
 .cd-th-days  { width: 108px; text-align: right !important; }
 .cd-th-qty   { width: 90px; text-align: right !important; }
@@ -117,6 +119,10 @@
 }
 .cd-price-auto { background: #f6fbf7; }
 .cd-computed { font-weight: bold; color: #2e7d32; }
+.cd-readonly {
+  display: inline-block; margin-left: 10px; font-size: 11px; vertical-align: middle;
+  color: #555; background: #eceff3; border: 1px solid #c9d2dd; border-radius: 10px; padding: 1px 10px;
+}
 .cd-td-qty { text-align: right; white-space: nowrap; }
 .cd-qty-input { width: 56px !important; text-align: right; }
 .cd-qty-unit { font-size: 11px; color: #888; margin-left: 3px; }

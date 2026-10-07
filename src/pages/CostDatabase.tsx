@@ -24,7 +24,7 @@ function displayPrice(p: ProductDef): number {
   return computePrice(p.labor, p.material, p.unitPrice);
 }
 
-export default function CostDatabase() {
+export default function CostDatabase({ readOnly = false }: { readOnly?: boolean }) {
   const [products, setProducts] = useState<ProductDef[]>(() => loadCostDatabase());
   const [activeTab, setActiveTab] = useState<string>('Co');
   const [editing, setEditing] = useState<EditState | null>(null);
@@ -133,7 +133,7 @@ export default function CostDatabase() {
     <div className="cd-wrap">
       <div className="cd-header">
         <div>
-          <div className="cd-title">原価データベース</div>
+          <div className="cd-title">原価データベース{readOnly && <span className="cd-readonly">閲覧のみ</span>}</div>
           <div className="cd-subtitle">木地代＝手間代＋材料代（自動計算）／完成日数＝手間代÷日当{dailyWage.toLocaleString()}円</div>
         </div>
         {saved && <span className="cd-saved">✓ 保存しました</span>}
@@ -166,7 +166,7 @@ export default function CostDatabase() {
               <th className="cd-th-days">完成日数(1本)</th>
               <th className="cd-th-qty">予定本数</th>
               <th className="cd-th-days">所要日数</th>
-              <th className="cd-th-act">操作</th>
+              {!readOnly && <th className="cd-th-act">操作</th>}
             </tr>
           </thead>
           <tbody>
@@ -211,7 +211,7 @@ export default function CostDatabase() {
                   <td className="cd-td-days">{daysOfLabel(p.labor)}</td>
                   <td className="cd-td-qty">
                     <input className="cd-input cd-qty-input" type="number" min={0} placeholder="—"
-                      value={p.plannedQty ?? ''}
+                      value={p.plannedQty ?? ''} disabled={readOnly}
                       onChange={e => changePlanned(gi, e.target.value)}
                       onBlur={persistPlanned} />
                     <span className="cd-qty-unit">本</span>
@@ -219,6 +219,7 @@ export default function CostDatabase() {
                   <td className="cd-td-days cd-total-days">
                     {totalDays != null ? `${totalDays.toFixed(1)}日` : '—'}
                   </td>
+                  {!readOnly && (
                   <td className="cd-td-act">
                     {isEditing ? (
                       <>
@@ -232,6 +233,7 @@ export default function CostDatabase() {
                       </>
                     )}
                   </td>
+                  )}
                 </tr>
               );
             })}
@@ -239,6 +241,7 @@ export default function CostDatabase() {
         </table>
 
         {/* Add row */}
+        {!readOnly && (
         <div className="cd-add-row">
           <span className="cd-add-label">＋ 追加</span>
           <input className="cd-input cd-add-name" placeholder="品名"
@@ -255,6 +258,7 @@ export default function CostDatabase() {
           </span>
           <button className="cd-btn add" onClick={addItem}>追加</button>
         </div>
+        )}
 
         <div className="cd-note">
           ※ 木地代は手間代＋材料代で自動計算されます。予定本数を入れると「完成日数×本数＝所要日数」が出ます。
