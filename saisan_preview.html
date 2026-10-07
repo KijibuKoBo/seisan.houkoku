@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>採算分析 プレビュー</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'Meiryo',sans-serif; background:#eef2f7; color:#2a3a4c; }
+  .hd { background:linear-gradient(135deg,#1a3a5c,#0d2640); color:#fff; padding:14px 20px; }
+  .hd h1 { font-size:17px; margin:0; }
+  .hd .sub { font-size:12px; opacity:.8; margin-top:3px; }
+  .wrap { max-width:860px; margin:0 auto; padding:18px 16px 50px; }
+  .ctl { background:#fff; border:1px solid #e3e8ef; border-radius:8px; padding:12px 16px; margin-bottom:14px; font-size:13px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .ctl input[type=range]{ width:200px; }
+  .num { text-align:right; }
+  .cat-badge{ display:inline-block; padding:1px 7px; border-radius:10px; background:#e8f0fa; color:#1a3a5c; font-size:11px; }
+
+  .verdict{ border-radius:10px; padding:18px 22px; margin-bottom:16px; color:#fff; }
+  .verdict.profit{ background:linear-gradient(135deg,#2e7d32,#1b5e20); }
+  .verdict.loss{ background:linear-gradient(135deg,#c0392b,#922b21); }
+  .verdict-main{ font-size:26px; font-weight:bold; display:flex; align-items:baseline; gap:14px; letter-spacing:2px; }
+  .verdict-amt{ font-size:22px; }
+  .verdict-sub{ font-size:12px; opacity:.9; margin-top:6px; }
+
+  .metrics{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px; }
+  .metric{ background:#fff; border:1px solid #eee; border-radius:8px; padding:12px 14px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .metric .l{ font-size:10.5px; color:#888; margin-bottom:6px; line-height:1.4; }
+  .metric .v{ font-size:17px; font-weight:bold; color:#1a3a5c; white-space:nowrap; }
+  .v.lab{ color:#1565c0; } .v.mat{ color:#8d6e00; }
+
+  .note{ background:#fffde7; border:1px solid #ffe082; border-radius:8px; padding:12px 16px; font-size:13px; line-height:1.7; }
+  .note .ok{ color:#2e7d32; font-weight:bold; } .note .ng{ color:#c0392b; font-weight:bold; }
+  .dim{ font-size:11px; color:#999; }
+
+  table{ width:100%; border-collapse:collapse; font-size:12px; margin-top:12px; background:#fff; }
+  th,td{ border:1px solid #e0e0e0; padding:6px 9px; text-align:left; }
+  th{ background:#f5f5f5; color:#555; }
+  td.lab{ color:#1565c0; } td.mat{ color:#8d6e00; }
+  tfoot td{ background:#eef3f8; font-weight:bold; border-top:2px solid #1a3a5c; }
+  .est{ display:inline-block; margin-left:6px; font-size:10px; color:#b26a00; background:#fff3e0; border:1px solid #ffcc80; border-radius:8px; padding:0 6px; }
+  .title{ font-size:13px; font-weight:bold; color:#1a3a5c; margin:18px 0 4px; }
+</style>
+</head>
+<body>
+<div class="hd"><h1>木地部分析 ＞ 採算（サンプル）</h1><div class="sub">令和8年9月／工場6人・日当20,000円・8時間</div></div>
+<div class="wrap">
+  <div class="ctl">
+    <b>実稼働日数</b>
+    <input id="wd" type="range" min="10" max="25" value="20" oninput="render()">
+    <span id="wdv">20日</span>
+    <span class="dim">（スライドで黒字/赤字の変化を確認できます。実際は祝日・土日で自動計算＋土曜出勤を調整）</span>
+  </div>
+  <div id="app"></div>
+</div>
+<script>
+  const PEOPLE=6, WAGE=20000;
+  // サンプル品目（令和8年9月・金額合計¥2,729,700）
+  const rows=[
+    {cat:'仏壇', name:'マレインダーク', cnt:40, amt:800000, ratio:0.65, est:false},
+    {cat:'Co',  name:'ジュエリーチェスト', cnt:10, amt:320000, ratio:0.594, est:false},
+    {cat:'仏壇', name:'ロンバスライト', cnt:50, amt:525000, ratio:0.619, est:false},
+    {cat:'物件', name:'かに道楽', cnt:19, amt:1008000, ratio:0.5, est:true},
+    {cat:'仏壇', name:'ルフラン試作', cnt:1, amt:76700, ratio:0.5, est:true},
+  ];
+  const yen=n=>'¥'+Math.round(n).toLocaleString();
+  function render(){
+    const wd=+document.getElementById('wd').value;
+    document.getElementById('wdv').value; document.getElementById('wdv').textContent=wd+'日';
+    let amt=0,lab=0;
+    const trs=rows.map(r=>{const l=Math.round(r.amt*r.ratio),m=r.amt-l;amt+=r.amt;lab+=l;
+      return `<tr><td><span class="cat-badge">${r.cat}</span></td><td>${r.name}${r.est?'<span class="est">推定50%</span>':''}</td><td class="num">${r.cnt}本</td><td class="num">${yen(r.amt)}</td><td class="num lab">${yen(l)}</td><td class="num mat">${yen(m)}</td></tr>`;}).join('');
+    const mat=amt-lab;
+    const laborCost=PEOPLE*WAGE*wd;
+    const profit=lab-laborCost, ok=profit>=0;
+    const needPD=lab/WAGE, needD=needPD/PEOPLE;
+    document.getElementById('app').innerHTML=`
+      <div class="verdict ${ok?'profit':'loss'}">
+        <div class="verdict-main">${ok?'黒字':'赤字'}<span class="verdict-amt">${ok?'+':'−'}${yen(Math.abs(profit))}</span></div>
+        <div class="verdict-sub">手間代合計（実質売上） ${yen(lab)} − 人件費 ${yen(laborCost)}</div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="l">当月の生産金額</div><div class="v">${yen(amt)}</div></div>
+        <div class="metric"><div class="l">材料代</div><div class="v mat">${yen(mat)}</div></div>
+        <div class="metric"><div class="l">手間代（実質売上）</div><div class="v lab">${yen(lab)}</div></div>
+        <div class="metric"><div class="l">人件費（6人×¥20,000×${wd}日）</div><div class="v">${yen(laborCost)}</div></div>
+      </div>
+      <div class="note">この手間代なら <b>${needD.toFixed(1)}日</b>（6人で）以内に仕上げれば採算が合います。実稼働 <b>${wd}日</b> なので、
+        ${wd<=needD?'<span class="ok">　目安日数以内です（黒字）。</span>':'<span class="ng">　'+(wd-needD).toFixed(1)+'日 超過しています（赤字）。</span>'}
+        <div class="dim" style="margin-top:4px">必要人日 = 手間代合計 ÷ 日当 = ${needPD.toFixed(1)}人日（＝目安 ${needD.toFixed(1)}日 × 6人）</div>
+      </div>
+      <div class="title">品目別の手間代・材料代</div>
+      <table><thead><tr><th>カテゴリー</th><th>品名</th><th>本数</th><th>金額</th><th>手間代</th><th>材料代</th></tr></thead>
+      <tbody>${trs}</tbody>
+      <tfoot><tr><td colspan="3">合計</td><td class="num">${yen(amt)}</td><td class="num lab">${yen(lab)}</td><td class="num mat">${yen(mat)}</td></tr></tfoot></table>
+      <div class="dim" style="margin-top:6px">※「推定50%」は原価管理に手間代・材料代の登録がない品目。金額の50%を手間代として計算。登録すると正確になります。</div>`;
+  }
+  render();
+</script>
+</body>
+</html>

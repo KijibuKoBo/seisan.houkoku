@@ -4,7 +4,8 @@ import { loadStore, saveStore, pushStoreToServer, setMonthData } from './utils/s
 import { initDefaultUsers, ensureDefaultUsers, getSession, logout } from './utils/auth';
 import { saveKijiItems, migrateCategories, pushKijiToServer } from './utils/kijiStore';
 import { syncFromServer, logChange, getChangeLogs } from './utils/api';
-import { seedCostDatabaseIfEmpty } from './utils/costStore';
+import { seedCostDatabaseIfEmpty, enrichCostDatabase } from './utils/costStore';
+import { syncSaisanSettings } from './utils/saisanSettings';
 import YearlyTable, { CompactSummary } from './components/YearlyTable';
 import MonthModal from './components/MonthModal';
 import LoginPage from './components/LoginPage';
@@ -49,8 +50,10 @@ export default function App() {
       .finally(async () => {
         await initDefaultUsers();
         await ensureDefaultUsers();
+        await syncSaisanSettings();
         migrateCategories();
         seedCostDatabaseIfEmpty();
+        enrichCostDatabase();   // 既存の原価DBに手間代・材料代を補完
         setStore(loadStore());
         setSyncing(false);
       });

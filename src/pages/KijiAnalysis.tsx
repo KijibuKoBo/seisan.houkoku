@@ -4,6 +4,7 @@ import { loadAllKijiItems, getAvailableKijiYears, loadKijiItems, saveKijiItems, 
 import { CATEGORIES, CATEGORY_FULL } from '../utils/productList';
 import { loadCostDatabase } from '../utils/costStore';
 import KijiReport from '../components/KijiReport';
+import SaisanTab from './SaisanTab';
 import './KijiAnalysis.css';
 
 // ─── aggregate helpers ───────────────────────────────────────────────────────
@@ -186,7 +187,7 @@ function DonutChart({ data }: { data: { label: string; value: number; color: str
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-type Tab = 'ranking' | 'product' | 'category' | 'monthly' | 'yearly' | 'manage';
+type Tab = 'ranking' | 'product' | 'category' | 'monthly' | 'yearly' | 'manage' | 'saisan';
 
 const TAB_LABELS: [Tab, string][] = [
   ['ranking', 'ランキング'],
@@ -194,6 +195,7 @@ const TAB_LABELS: [Tab, string][] = [
   ['category', 'カテゴリー別'],
   ['monthly', '月別トレンド'],
   ['yearly', '年別比較'],
+  ['saisan', '採算'],
   ['manage', '品目管理'],
 ];
 
@@ -306,7 +308,7 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
       <div className="kiji-content">
 
         {/* empty state for analysis tabs */}
-        {allItems.length === 0 && tab !== 'manage' && (
+        {allItems.length === 0 && tab !== 'manage' && tab !== 'saisan' && (
           <div className="kiji-empty">
             <div className="kiji-empty-icon">📄</div>
             <p>木地部のPDFデータがまだありません。</p>
@@ -586,6 +588,11 @@ export default function KijiAnalysis({ store, onSaveMonthKiji, canEdit }: KijiAn
             canEdit={canEdit}
             onRefresh={refreshItems}
           />
+        )}
+
+        {/* ── 採算 ── */}
+        {tab === 'saisan' && (
+          <SaisanTab availableYears={availableYears} canEdit={canEdit} />
         )}
 
         {/* ── 年別比較 ── */}

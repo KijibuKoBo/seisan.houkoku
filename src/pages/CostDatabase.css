@@ -105,7 +105,9 @@
 
 .cd-th-no    { width: 44px; text-align: center !important; }
 .cd-th-name  { }
-.cd-th-price { width: 130px; text-align: right !important; }
+.cd-th-price { width: 110px; text-align: right !important; }
+.cd-th-days  { width: 120px; text-align: right !important; }
+.cd-td-days  { text-align: right; color: #1565c0; font-size: 12px; white-space: nowrap; }
 .cd-th-act   { width: 140px; text-align: center !important; }
 
 .cd-row td {
