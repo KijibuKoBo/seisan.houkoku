@@ -6,6 +6,7 @@ import { saveKijiItems, migrateCategories, pushKijiToServer } from './utils/kiji
 import { syncFromServer, logChange, getChangeLogs } from './utils/api';
 import { seedCostDatabaseIfEmpty, enrichCostDatabase } from './utils/costStore';
 import { syncSaisanSettings } from './utils/saisanSettings';
+import { syncSaisanRatios } from './utils/saisanRatios';
 import YearlyTable, { CompactSummary } from './components/YearlyTable';
 import MonthModal from './components/MonthModal';
 import LoginPage from './components/LoginPage';
@@ -51,6 +52,7 @@ export default function App() {
         await initDefaultUsers();
         await ensureDefaultUsers();
         await syncSaisanSettings();
+        await syncSaisanRatios();
         migrateCategories();
         seedCostDatabaseIfEmpty();
         enrichCostDatabase();   // 既存の原価DBに手間代・材料代を補完

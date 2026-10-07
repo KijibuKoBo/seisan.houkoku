@@ -6,12 +6,14 @@ export interface SaisanSettings {
   people: number;      // 工場の人数
   dailyWage: number;   // 日当（1人1日）
   hoursPerDay: number; // 1日の作業時間
+  estimateRate: number; // 手間/材料が未登録の品目の、手間代の割合（%）
 }
 
 export const DEFAULT_SETTINGS: SaisanSettings = {
   people: 6,
   dailyWage: 20000,
   hoursPerDay: 8,
+  estimateRate: 50,
 };
 
 export function loadSaisanSettings(): SaisanSettings {
@@ -23,6 +25,7 @@ export function loadSaisanSettings(): SaisanSettings {
       people: s.people ?? DEFAULT_SETTINGS.people,
       dailyWage: s.dailyWage ?? DEFAULT_SETTINGS.dailyWage,
       hoursPerDay: s.hoursPerDay ?? DEFAULT_SETTINGS.hoursPerDay,
+      estimateRate: s.estimateRate ?? DEFAULT_SETTINGS.estimateRate,
     };
   } catch { return { ...DEFAULT_SETTINGS }; }
 }

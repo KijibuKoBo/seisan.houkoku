@@ -2,10 +2,12 @@ import { useState, useMemo, useEffect } from 'react';
 import { KijiItem } from '../types';
 import { loadKijiItems } from '../utils/kijiStore';
 import { loadCostDatabase } from '../utils/costStore';
+import { PRODUCT_LIST } from '../utils/productList';
 import {
   loadSaisanSettings, saveSaisanSettings, pushSaisanSettings, SaisanSettings,
 } from '../utils/saisanSettings';
 import { getMonthWorkInfo } from '../utils/holidays';
+import { loadSaisanRatios, saveSaisanRatios, pushSaisanRatios, ratioKey, RatioMap } from '../utils/saisanRatios';
 import './SaisanTab.css';
 
 interface Props {
@@ -15,13 +17,15 @@ interface Props {
 
 interface SplitRow {
   key: string;
+  rkey: string;        // 割合記憶用キー（カテゴリー|品名）
   category: string;
   name: string;
   count: number;
   amount: number;
   labor: number;
   material: number;
-  estimated: boolean; // マスターに手間/材料がなく50%で推定したか
+  estimated: boolean;  // マスターに手間/材料がなく割合で推定したか
+  pct: number;         // 推定時の手間代割合（%）
 }
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -40,44 +44,58 @@ export default function SaisanTab({ availableYears, canEdit }: Props) {
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsSaved, setSettingsSaved] = useState(false);
 
-  // 原価マスター（手間代・材料代の内訳）
+  // 原価マスター（手間代・材料代の内訳）。
+  // 既定のマスター(PRODUCT_LIST)を土台に、保存済みの原価DBで上書きする。
   const costMap = useMemo(() => {
     const m: Record<string, { unitPrice: number; labor?: number; material?: number }> = {};
-    for (const p of loadCostDatabase()) {
+    for (const p of PRODUCT_LIST) {
       m[`${p.category}|${p.name}`] = { unitPrice: p.unitPrice, labor: p.labor, material: p.material };
+    }
+    for (const p of loadCostDatabase()) {
+      const key = `${p.category}|${p.name}`;
+      const ex = m[key];
+      m[key] = {
+        unitPrice: p.unitPrice,
+        labor: p.labor ?? ex?.labor,
+        material: p.material ?? ex?.material,
+      };
     }
     return m;
   }, []);
 
+  // 手間代割合の品目別オーバーライド（未登録品目用）
+  const [ratios, setRatios] = useState<RatioMap>(() => loadSaisanRatios());
+
   // 対象月の品目
   const items = useMemo<KijiItem[]>(() => loadKijiItems(selYear, selMonth), [selYear, selMonth]);
 
-  // 各品目を手間代・材料代に分割（実際の金額を、マスターの手間:材料の比率で按分）
+  // 各品目を手間代・材料代に分割
+  // マスターに登録あり → その比率。無い品目 → 品目別割合（なければ設定の初期割合）。
   const rows = useMemo<SplitRow[]>(() => {
     return items
       .filter(i => !i.excluded && (i.category || 'その他') !== '備考')
       .map((i, idx) => {
+        const cat = i.category || 'その他';
+        const rkey = ratioKey(cat, i.name);
         const m = costMap[`${i.category}|${i.name}`];
-        let ratio = 0.5;
         let estimated = true;
+        let pct = ratios[rkey] ?? settings.estimateRate;
+        let ratio = pct / 100;
         if (m && m.labor != null) {
           const laborU = m.labor;
           const matU = m.material != null ? m.material : Math.max(m.unitPrice - m.labor, 0);
           const denom = laborU + matU;
-          if (denom > 0) { ratio = laborU / denom; estimated = false; }
+          if (denom > 0) { ratio = laborU / denom; estimated = false; pct = Math.round(ratio * 100); }
         }
         const labor = Math.round(i.amount * ratio);
         const material = i.amount - labor;
         return {
-          key: `${i.category}_${i.name}_${idx}`,
-          category: i.category || 'その他',
-          name: i.name,
-          count: i.count,
-          amount: i.amount,
-          labor, material, estimated,
+          key: `${cat}_${i.name}_${idx}`,
+          rkey, category: cat, name: i.name,
+          count: i.count, amount: i.amount, labor, material, estimated, pct,
         };
       });
-  }, [items, costMap]);
+  }, [items, costMap, ratios, settings.estimateRate]);
 
   const totalAmount   = rows.reduce((s, r) => s + r.amount, 0);
   const totalLabor    = rows.reduce((s, r) => s + r.labor, 0);
@@ -123,6 +141,17 @@ export default function SaisanTab({ availableYears, canEdit }: Props) {
     setSettingsSaved(false);
   };
 
+  // 推定品目の手間代割合を変更（ローカル反映）
+  const changeRatio = (rkey: string, pct: number) => {
+    const clamped = Math.max(0, Math.min(100, pct));
+    setRatios(prev => ({ ...prev, [rkey]: clamped }));
+  };
+  // 変更確定時にサーバー保存
+  const persistRatios = () => {
+    saveSaisanRatios(ratios);
+    pushSaisanRatios().catch(() => { /* ローカルには保存済み */ });
+  };
+
   return (
     <div className="kiji-section saisan">
       {/* 対象月 */}
@@ -149,6 +178,11 @@ export default function SaisanTab({ availableYears, canEdit }: Props) {
           <input type="number" min={0} step={1000} value={settings.dailyWage} disabled={!canEdit}
             onChange={e => setNum('dailyWage', Number(e.target.value))} />
           <span>円 / 日（{settings.hoursPerDay}時間）</span>
+
+          <label>未登録品目の手間代</label>
+          <input type="number" min={0} max={100} value={settings.estimateRate} disabled={!canEdit}
+            onChange={e => setNum('estimateRate', Number(e.target.value))} />
+          <span>%（初期値）</span>
 
           {canEdit && (
             <button className="saisan-save-btn" onClick={saveSettings} disabled={savingSettings}>
@@ -247,7 +281,20 @@ export default function SaisanTab({ availableYears, canEdit }: Props) {
               {rows.map(r => (
                 <tr key={r.key}>
                   <td><span className="cat-badge">{r.category}</span></td>
-                  <td>{r.name}{r.estimated && <span className="saisan-est">推定50%</span>}</td>
+                  <td>
+                    {r.name}
+                    {r.estimated && (
+                      canEdit ? (
+                        <span className="saisan-ratio-edit" title="手間代の割合（%）。変更できます">
+                          手間
+                          <input type="number" min={0} max={100} value={r.pct}
+                            onChange={e => changeRatio(r.rkey, Number(e.target.value))}
+                            onBlur={persistRatios} />
+                          %
+                        </span>
+                      ) : <span className="saisan-est">推定{r.pct}%</span>
+                    )}
+                  </td>
                   <td className="num">{r.count}本</td>
                   <td className="num">{yen(r.amount)}</td>
                   <td className="num lab">{yen(r.labor)}</td>
@@ -265,7 +312,9 @@ export default function SaisanTab({ availableYears, canEdit }: Props) {
             </tfoot>
           </table>
           <div className="saisan-dim" style={{ marginTop: 6 }}>
-            ※「推定50%」は原価管理に手間代・材料代の登録がない品目です。金額の50%を手間代として計算しています。原価管理で登録すると正確になります。
+            ※ 手間代・材料代が原価管理に未登録の品目は、金額に対する手間代の割合（%）で計算します。
+            {canEdit ? '各行の「手間○%」を変更すると、その品名の割合として記憶されます（全端末共有）。' : '割合の変更は管理者のみ可能です。'}
+            原価管理に手間代・材料代を登録すると、さらに正確になります。
           </div>
         </>
       )}

@@ -92,6 +92,15 @@
   display: inline-block; margin-left: 6px; font-size: 10px; color: #b26a00;
   background: #fff3e0; border: 1px solid #ffcc80; border-radius: 8px; padding: 0 6px;
 }
+.saisan-ratio-edit {
+  display: inline-flex; align-items: center; gap: 2px; margin-left: 8px;
+  font-size: 11px; color: #b26a00; background: #fff8ef; border: 1px solid #ffcc80;
+  border-radius: 8px; padding: 1px 6px;
+}
+.saisan-ratio-edit input {
+  width: 42px; padding: 1px 4px; border: 1px solid #e0a960; border-radius: 4px;
+  font-size: 12px; text-align: right; font-family: inherit;
+}
 
 @media (max-width: 700px) {
   .saisan-metrics { grid-template-columns: repeat(2, 1fr); }
