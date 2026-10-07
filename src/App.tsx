@@ -4,7 +4,7 @@ import { loadStore, saveStore, pushStoreToServer, setMonthData } from './utils/s
 import { initDefaultUsers, ensureDefaultUsers, getSession, logout } from './utils/auth';
 import { saveKijiItems, migrateCategories, pushKijiToServer } from './utils/kijiStore';
 import { syncFromServer, logChange, getChangeLogs } from './utils/api';
-import { seedCostDatabaseIfEmpty, enrichCostDatabase } from './utils/costStore';
+import { seedCostDatabaseIfEmpty, enrichCostDatabase, addMissingProducts } from './utils/costStore';
 import { syncSaisanSettings } from './utils/saisanSettings';
 import { syncSaisanRatios } from './utils/saisanRatios';
 import YearlyTable, { CompactSummary } from './components/YearlyTable';
@@ -56,6 +56,7 @@ export default function App() {
         migrateCategories();
         seedCostDatabaseIfEmpty();
         enrichCostDatabase();   // 既存の原価DBに手間代・材料代を補完
+        addMissingProducts();   // マスターにあって原価DBに無い製品を追加
         setStore(loadStore());
         setSyncing(false);
       });

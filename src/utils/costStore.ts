@@ -47,3 +47,19 @@ export function enrichCostDatabase(): void {
   });
   if (changed) saveCostDatabase(next);
 }
+
+// マスター(PRODUCT_LIST)にあって原価DBに無い製品を追加する（マイグレーション）
+// 既存の製品・ユーザー追加の製品はそのまま残す。
+export function addMissingProducts(): void {
+  const raw = localStorage.getItem(KEY);
+  if (!raw) return; // 空なら seed が処理
+  let list: ProductDef[];
+  try { list = JSON.parse(raw); } catch { return; }
+  const have = new Set(list.map(p => `${p.category}|${p.name}`));
+  let changed = false;
+  for (const p of PRODUCT_LIST) {
+    const k = `${p.category}|${p.name}`;
+    if (!have.has(k)) { list.push({ ...p }); have.add(k); changed = true; }
+  }
+  if (changed) saveCostDatabase(list);
+}

@@ -53,6 +53,7 @@ export const PRODUCT_LIST: ProductDef[] = [
   { name: 'ビッグチェスト',              category: 'Co', unitPrice: 84800, labor: 54000, material: 30800 },
   { name: 'チェアE-02',                  category: 'Co', unitPrice: 4650,  labor: 4650,  material: 0     },
   { name: 'デスク1600',                  category: 'Co', unitPrice: 34000, labor: 18000, material: 16000 },
+  { name: 'サイドチェスト',              category: 'Co', unitPrice: 13800, labor: 7000,  material: 6800  },
   { name: 'チェアE-03',                  category: 'Co', unitPrice: 4650,  labor: 4650,  material: 0     },
   { name: 'アロール一面',                category: 'Co', unitPrice: 44030, labor: 25000, material: 19030 },
   { name: 'アロール半三',                category: 'Co', unitPrice: 44030, labor: 25000, material: 19030 },
@@ -164,6 +165,10 @@ export const PRODUCT_LIST: ProductDef[] = [
   { name: 'ブックスタンド',  category: 'PC', unitPrice: 3500  },
   { name: 'ドールハウスL',   category: 'PC', unitPrice: 40000 },
   { name: 'ドールハウスL字', category: 'PC', unitPrice: 20000 },
+  { name: 'ドールハウスM',   category: 'PC', unitPrice: 0 },
+  { name: 'スタンド　大',    category: 'PC', unitPrice: 0 },
+  { name: 'ドロワーチェスト', category: 'PC', unitPrice: 0 },
+  { name: '密談椅子',        category: 'PC', unitPrice: 0 },
 ];
 
 export const CATEGORIES = ['Co', 'MP', '仏壇', 'リリー', 'PC', '特注', 'その他', '備考'] as const;
